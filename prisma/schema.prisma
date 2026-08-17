@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Team {
+  id            String            @id @default(cuid())
+  name          String
+  ownerName     String
+  faabStarting  Int               @default(100)
+  buyInPaid     Boolean           @default(false)
+  playoffPaid   Boolean           @default(false)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  faabMoves     FaabTransaction[]
+  challengeWins WeeklyChallenge[]
+}
+
+model FaabTransaction {
+  id          String   @id @default(cuid())
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId      String
+  week        Int
+  description String
+  amount      Int
+  createdAt   DateTime @default(now())
+}
+
+model WeeklyChallenge {
+  id          String   @id @default(cuid())
+  week        Int      @unique
+  title       String
+  criteria    String
+  winner      Team?    @relation(fields: [winnerId], references: [id])
+  winnerId    String?
+  updatedAt   DateTime @updatedAt
+}
+
+model AppSettings {
+  id    Int    @id @default(1)
+  draftOrderNote String @default("Draft order will be posted here once it's set.")
+}

@@ -1,0 +1,148 @@
+export type ScoreRow = { category: string; points: string };
+
+export const ROSTER_SLOTS: string[] = [
+  "QB",
+  "RB1",
+  "RB2",
+  "WR1",
+  "WR2",
+  "TE",
+  "FLEX (WR/RB/TE)",
+  "K",
+  "D/ST",
+  "6 Bench Slots",
+  "1 IR",
+];
+
+export const PASSING: ScoreRow[] = [
+  { category: "Passing Yards", points: "1 pt / 25 yds" },
+  { category: "Passing TD", points: "4" },
+  { category: "Passing 1st Down", points: "—" },
+  { category: "2-Pt Conversion", points: "2" },
+  { category: "Pass Intercepted", points: "-2" },
+  { category: "Pick 6 Thrown", points: "—" },
+  { category: "Pass Completed", points: "—" },
+  { category: "Incomplete Pass", points: "—" },
+  { category: "Pass Attempts", points: "—" },
+  { category: "QB Sacked", points: "—" },
+  { category: "40+ Yard Completion Bonus", points: "—" },
+  { category: "40+ Yard Pass TD Bonus", points: "—" },
+  { category: "50+ Yard Pass TD Bonus", points: "—" },
+];
+
+export const RUSHING: ScoreRow[] = [
+  { category: "Rushing Yards", points: "1 pt / 10 yds" },
+  { category: "Rushing TD", points: "6" },
+  { category: "Rushing 1st Down", points: "—" },
+  { category: "2-Pt Conversion", points: "2" },
+  { category: "Rush Attempts", points: "—" },
+  { category: "40+ Yard Rush Bonus", points: "—" },
+  { category: "40+ Yard Rush TD Bonus", points: "—" },
+  { category: "50+ Yard Rush TD Bonus", points: "—" },
+];
+
+export const RECEIVING: ScoreRow[] = [
+  { category: "Reception", points: "0.5" },
+  { category: "Receiving Yards", points: "1 pt / 10 yds" },
+  { category: "Receiving TD", points: "6" },
+  { category: "Receiving 1st Down", points: "—" },
+  { category: "2-Pt Conversion", points: "2" },
+  { category: "0-4 Yard Reception Bonus", points: "—" },
+  { category: "5-9 Yard Reception Bonus", points: "—" },
+  { category: "10-19 Yard Reception Bonus", points: "—" },
+  { category: "20-29 Yard Reception Bonus", points: "—" },
+  { category: "30-39 Yard Reception Bonus", points: "—" },
+  { category: "40+ Yard Reception Bonus", points: "—" },
+  { category: "40+ Yard Reception TD Bonus", points: "—" },
+  { category: "50+ Yard Reception TD Bonus", points: "—" },
+];
+
+export const KICKING: ScoreRow[] = [
+  { category: "FG Made", points: "—" },
+  { category: "FG Made (0-19 yards)", points: "3" },
+  { category: "FG Made (20-29 yards)", points: "3" },
+  { category: "FG Made (30-39 yards)", points: "3" },
+  { category: "FG Made (40-49 yards)", points: "4" },
+  { category: "FG Made (50-59 yards)", points: "5" },
+  { category: "FG Made (50+ yards)", points: "—" },
+  { category: "FG Made (60+ yards)", points: "6" },
+  { category: "Points per FG yard", points: "—" },
+  { category: "Points per FG yard over 30", points: "—" },
+  { category: "PAT Made", points: "1" },
+  { category: "FG Missed", points: "-1" },
+  { category: "FG Missed (0-19 yards)", points: "—" },
+  { category: "FG Missed (20-29 yards)", points: "—" },
+  { category: "FG Missed (30-39 yards)", points: "—" },
+  { category: "FG Missed (40-49 yards)", points: "—" },
+  { category: "FG Missed (50-59 yards)", points: "—" },
+  { category: "FG Missed (50+ yards)", points: "—" },
+  { category: "FG Missed (60+ yards)", points: "—" },
+  { category: "PAT Missed", points: "-1" },
+];
+
+export const TEAM_DEFENSE: ScoreRow[] = [
+  { category: "Defense TD", points: "6" },
+  { category: "Points Allowed 0", points: "5" },
+  { category: "Points Allowed 1-6", points: "4" },
+  { category: "Points Allowed 7-13", points: "3" },
+  { category: "Points Allowed 14-20", points: "1" },
+  { category: "Points Allowed 21-27", points: "—" },
+  { category: "Points Allowed 28-34", points: "-1" },
+  { category: "Points Allowed 35+", points: "-4" },
+  { category: "Points Per Point Allowed", points: "—" },
+  { category: "Less Than 100 Total Yards Allowed", points: "5" },
+  { category: "100-199 Total Yards Allowed", points: "3" },
+  { category: "200-299 Total Yards Allowed", points: "2" },
+  { category: "300-349 Total Yards Allowed", points: "—" },
+  { category: "350-399 Total Yards Allowed", points: "-1" },
+  { category: "400-449 Total Yards Allowed", points: "-3" },
+  { category: "450-499 Total Yards Allowed", points: "-5" },
+  { category: "500-549 Total Yards Allowed", points: "-6" },
+  { category: "550+ Total Yards Allowed", points: "-7" },
+  { category: "Points Per Yard Allowed", points: "—" },
+  { category: "3 and Out", points: "—" },
+  { category: "4th Down Stop", points: "—" },
+  { category: "Hit on QB", points: "—" },
+  { category: "Sacks", points: "1" },
+  { category: "Sack Yards", points: "—" },
+  { category: "Interceptions", points: "2" },
+  { category: "INT Return Yards", points: "—" },
+  { category: "Fumble Recovery", points: "2" },
+  { category: "Fumble Return Yards", points: "—" },
+  { category: "Tackle For Loss", points: "—" },
+  { category: "Assisted Tackle", points: "—" },
+  { category: "Solo Tackle", points: "—" },
+  { category: "Tackle", points: "—" },
+  { category: "Safety", points: "2" },
+  { category: "Forced Fumble", points: "1" },
+  { category: "Blocked Kick", points: "2" },
+  { category: "Forced Punt", points: "—" },
+  { category: "Pass Defended", points: "—" },
+  { category: "2-Pt Conversion Returns", points: "—" },
+  { category: "Missed FG Return Yards", points: "—" },
+  { category: "Blocked Kick Return Yards", points: "—" },
+];
+
+export const SPECIAL_TEAMS_DEFENSE: ScoreRow[] = [
+  { category: "Special Teams TD", points: "6" },
+  { category: "Special Teams Forced Fumble", points: "1" },
+  { category: "Special Teams Fumble Recovery", points: "1" },
+  { category: "Special Teams Solo Tackle", points: "—" },
+  { category: "Punt Return Yards", points: "—" },
+  { category: "Kick Return Yards", points: "—" },
+];
+
+export const SPECIAL_TEAMS_PLAYER: ScoreRow[] = [
+  { category: "Special Teams Player TD", points: "6" },
+  { category: "Special Teams Player Forced Fumble", points: "1" },
+  { category: "Special Teams Player Fumble Recovery", points: "1" },
+  { category: "Special Teams Player Solo Tackle", points: "—" },
+  { category: "Player Punt Return Yards", points: "—" },
+  { category: "Player Kick Return Yards", points: "—" },
+];
+
+export const MISC: ScoreRow[] = [
+  { category: "Fumble", points: "—" },
+  { category: "Fumble Lost", points: "-2" },
+  { category: "Fumble Recovery TD", points: "6" },
+];

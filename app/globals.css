@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+:root {
+  --background: #faf8f4;
+  --foreground: #241a3d;
+
+  --color-ink: #1a1033;
+  --color-purple: #2d1b69;
+  --color-purple-dark: #221252;
+  --color-purple-light: #4b2e9e;
+  --color-gold: #c9a227;
+  --color-gold-light: #e0c15a;
+  --color-cream: #faf8f4;
+  --color-lavender: #efe9f8;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-ink: var(--color-ink);
+  --color-purple: var(--color-purple);
+  --color-purple-dark: var(--color-purple-dark);
+  --color-purple-light: var(--color-purple-light);
+  --color-gold: var(--color-gold);
+  --color-gold-light: var(--color-gold-light);
+  --color-cream: var(--color-cream);
+  --color-lavender: var(--color-lavender);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body), Arial, Helvetica, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+.wwz-table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 0.5rem;
+}
+
+.wwz-table thead th {
+  background: var(--color-purple-dark);
+  color: var(--color-cream);
+  text-align: left;
+  font-weight: 600;
+  padding: 0.65rem 1rem;
+  font-size: 0.875rem;
+}
+
+.wwz-table tbody td {
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  border-top: 1px solid rgba(45, 27, 105, 0.08);
+}
+
+.wwz-table tbody tr:nth-child(odd) {
+  background: var(--color-lavender);
+}
+
+.wwz-table tbody tr:nth-child(even) {
+  background: var(--color-cream);
+}
+
+.wwz-section-header {
+  background: var(--color-purple);
+  color: var(--color-cream);
+  border-bottom: 3px solid var(--color-gold);
+  border-radius: 0.5rem 0.5rem 0 0;
+  padding: 0.6rem 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.wwz-card {
+  background: white;
+  border: 1px solid rgba(45, 27, 105, 0.12);
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px rgba(26, 16, 51, 0.05);
+  overflow: hidden;
+}
