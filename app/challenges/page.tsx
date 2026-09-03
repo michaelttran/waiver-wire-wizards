@@ -6,8 +6,8 @@ export const metadata = {
 };
 
 const TIEBREAKERS = [
-  { challenge: "All Gas, No Brakes", criteria: "Every starter scores 10+" },
   { challenge: "Defense Wins Championships", criteria: "Highest D/ST score" },
+  { challenge: "All Gas, No Brakes", criteria: "Every starter scores 10+" },
   {
     challenge: "Monday Night Miracle",
     criteria: "Team that gains the most points from MNF players",

@@ -22,7 +22,6 @@
 
 # misc
 .DS_Store
-*.pem
 
 # debug
 npm-debug.log*
@@ -43,17 +42,20 @@ next-env.d.ts
 
 /app/generated/prisma
 
-# sqlite database
+# local sqlite artifacts (legacy — the app now runs on Postgres/Supabase, but
+# these are harmless to keep ignored in case a local db file ever appears)
 /prisma/*.db
 /prisma/*.db-journal
 /prisma/*.sqlite
 /prisma/*.sqlite3
 
-# private keys / certs
+# private keys / certs (includes the self-signed cert generated for local
+# HTTPS testing via `--experimental-https`, under /certificates)
 *.pem
 *.key
 *.crt
 *.p12
+/certificates/
 
 # editor / OS
 .vscode/

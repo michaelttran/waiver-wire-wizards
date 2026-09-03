@@ -7,8 +7,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Team {
@@ -18,10 +19,29 @@ model Team {
   faabStarting  Int               @default(100)
   buyInPaid     Boolean           @default(false)
   playoffPaid   Boolean           @default(false)
+  draftPosition Int?
+  sleeperUserId String?           @unique
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   faabMoves     FaabTransaction[]
   challengeWins WeeklyChallenge[]
+  draftPicks    DraftPick[]
+}
+
+model DraftPick {
+  id             String   @id @default(cuid())
+  team           Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId         String
+  round          Int
+  pick           Int
+  overall        Int
+  playerName     String
+  playerPosition String
+  nflTeam        String
+  note           String?
+  createdAt      DateTime @default(now())
+
+  @@unique([overall])
 }
 
 model FaabTransaction {
@@ -45,6 +65,19 @@ model WeeklyChallenge {
 }
 
 model AppSettings {
-  id    Int    @id @default(1)
-  draftOrderNote String @default("Draft order will be posted here once it's set.")
+  id                Int       @id @default(1)
+  draftOrderNote    String    @default("Draft order will be posted here once it's set.")
+  sleeperLastSynced DateTime?
+}
+
+// Generic sliding-window rate limiter, shared across serverless instances via
+// the database. `scope` identifies the thing being limited (e.g. "login",
+// "sleeper-sync") and `key` identifies who (e.g. an IP address).
+model RateLimitAttempt {
+  id        String   @id @default(cuid())
+  scope     String
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([scope, key, createdAt])
 }

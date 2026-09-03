@@ -6,7 +6,9 @@ import {
   addFaabMove,
   deleteFaabMove,
   logout,
+  replaceDraftPicks,
   setChallengeWinner,
+  syncFromSleeper,
   updateDraftNote,
   updateTeam,
 } from "@/app/admin/actions";
@@ -22,14 +24,24 @@ export default async function AdminPage() {
     redirect("/admin/login");
   }
 
-  const [teams, challenges, settings] = await Promise.all([
+  const [teams, challenges, settings, draftPicks] = await Promise.all([
     prisma.team.findMany({
       orderBy: { name: "asc" },
       include: { faabMoves: { orderBy: { createdAt: "desc" } } },
     }),
     prisma.weeklyChallenge.findMany({ orderBy: { week: "asc" } }),
     prisma.appSettings.findUnique({ where: { id: 1 } }),
+    prisma.draftPick.findMany({
+      orderBy: { overall: "asc" },
+      include: { team: true },
+    }),
   ]);
+
+  const picksCsv = draftPicks
+    .map((p) =>
+      [p.round, p.team.name, p.playerName, p.playerPosition, p.nflTeam, p.note ?? ""].join(", ")
+    )
+    .join("\n");
 
   const allMoves = teams
     .flatMap((t) => t.faabMoves.map((m) => ({ ...m, teamName: t.name })))
@@ -56,6 +68,34 @@ export default async function AdminPage() {
         </form>
       </div>
 
+      <SectionCard title="Sleeper Sync">
+        <form
+          action={syncFromSleeper}
+          className="flex flex-wrap items-center justify-between gap-3 p-4"
+        >
+          <p className="text-xs text-ink/60">
+            Pulls team/owner names, draft order, and the full draft board straight from your
+            Sleeper league.
+            {settings?.sleeperLastSynced && (
+              <>
+                {" "}
+                Last synced{" "}
+                <span className="font-600">
+                  {settings.sleeperLastSynced.toLocaleString()}
+                </span>
+                .
+              </>
+            )}
+          </p>
+          <button
+            type="submit"
+            className="rounded bg-purple text-cream text-xs font-600 px-3 py-1.5 hover:bg-purple-light transition-colors shrink-0"
+          >
+            Sync from Sleeper
+          </button>
+        </form>
+      </SectionCard>
+
       <SectionCard title="Teams, Buy-In & FAAB">
         <div className="overflow-x-auto">
           <table className="wwz-table">
@@ -64,6 +104,7 @@ export default async function AdminPage() {
                 <th>Team</th>
                 <th>Owner</th>
                 <th>FAAB Start</th>
+                <th>Draft Pos</th>
                 <th>League Entry</th>
                 <th>Playoff Entry</th>
                 <th></th>
@@ -72,10 +113,10 @@ export default async function AdminPage() {
             <tbody>
               {teams.map((team) => (
                 <tr key={team.id}>
-                  <td colSpan={6} className="p-0">
+                  <td colSpan={7} className="p-0">
                     <form
                       action={updateTeam}
-                      className="grid grid-cols-6 gap-2 items-center px-4 py-2"
+                      className="grid grid-cols-7 gap-2 items-center px-4 py-2"
                     >
                       <input type="hidden" name="id" value={team.id} />
                       <input
@@ -92,6 +133,13 @@ export default async function AdminPage() {
                         name="faabStarting"
                         type="number"
                         defaultValue={team.faabStarting}
+                        className="rounded border border-purple/20 px-2 py-1 text-sm"
+                      />
+                      <input
+                        name="draftPosition"
+                        type="number"
+                        min={1}
+                        defaultValue={team.draftPosition ?? ""}
                         className="rounded border border-purple/20 px-2 py-1 text-sm"
                       />
                       <label className="flex items-center gap-1.5 text-sm">
@@ -253,7 +301,7 @@ export default async function AdminPage() {
         </table>
       </SectionCard>
 
-      <SectionCard title="Draft Order Note (stub until draft order is set)">
+      <SectionCard title="Draft Order Note (shown until draft order/picks are set)">
         <form action={updateDraftNote} className="p-4 space-y-3">
           <textarea
             name="draftOrderNote"
@@ -266,6 +314,29 @@ export default async function AdminPage() {
             className="rounded bg-purple text-cream text-xs font-600 px-3 py-1.5 hover:bg-purple-light transition-colors"
           >
             Save
+          </button>
+        </form>
+      </SectionCard>
+
+      <SectionCard title="Draft Picks">
+        <form action={replaceDraftPicks} className="p-4 space-y-3">
+          <p className="text-xs text-ink/60">
+            One pick per line: <code>round, team name, player, position, nfl team, note (optional)</code>.
+            Pick number and overall are derived from each team&rsquo;s Draft Pos above. Saving replaces
+            every pick below, so paste the full board each time.
+          </p>
+          <textarea
+            name="picksCsv"
+            defaultValue={picksCsv}
+            rows={16}
+            spellCheck={false}
+            className="w-full rounded border border-purple/20 px-3 py-2 text-xs font-mono"
+          />
+          <button
+            type="submit"
+            className="rounded bg-purple text-cream text-xs font-600 px-3 py-1.5 hover:bg-purple-light transition-colors"
+          >
+            Save Draft Picks
           </button>
         </form>
       </SectionCard>

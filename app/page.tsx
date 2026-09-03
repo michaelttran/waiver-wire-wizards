@@ -89,7 +89,7 @@ export default function HomePage() {
             { href: "/rules", label: "Rules & Scoring", desc: "Full point-value breakdown" },
             { href: "/challenges", label: "Weekly Challenges", desc: "See this week's winner" },
             { href: "/faab", label: "FAAB Tracker", desc: "Remaining budget by team" },
-            { href: "/draft", label: "Draft Order", desc: "Coming soon" },
+            { href: "/draft", label: "Draft Order", desc: "Draft positions and picks" },
           ].map((item) => (
             <Link
               key={item.href}

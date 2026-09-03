@@ -7,13 +7,19 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:seed": "node --env-file=.env node_modules/.bin/tsx prisma/seed.ts"
+    "postinstall": "prisma generate",
+    "db:seed": "node --env-file=.env node_modules/.bin/tsx prisma/seed.ts",
+    "sync:sleeper": "node --env-file=.env node_modules/.bin/tsx scripts/sync-sleeper.ts"
   },
   "prisma": {
     "seed": "node --env-file=.env node_modules/.bin/tsx prisma/seed.ts"
   },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2"
+  },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "html2canvas-pro": "^2.4.1",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"

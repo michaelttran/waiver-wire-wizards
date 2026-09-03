@@ -14,6 +14,7 @@ export default async function AdminLoginPage({
   }
   const params = await searchParams;
   const hasError = params?.error === "1";
+  const isRateLimited = params?.error === "ratelimited";
 
   return (
     <div className="max-w-sm mx-auto px-4 py-16">
@@ -26,6 +27,11 @@ export default async function AdminLoginPage({
         </p>
         {hasError && (
           <p className="text-sm text-red-600 mb-4">Incorrect password. Try again.</p>
+        )}
+        {isRateLimited && (
+          <p className="text-sm text-red-600 mb-4">
+            Too many attempts. Please wait a few minutes and try again.
+          </p>
         )}
         <form action={login} className="space-y-4">
           <div>
