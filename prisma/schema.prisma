@@ -2,13 +2,13 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider      = "prisma-client"
-  output        = "../app/generated/prisma"
-  // "native" covers local dev (macOS); "rhel-openssl-3.0.x" is what Vercel's
-  // serverless Node.js runtime needs. The generated client is gitignored and
-  // rebuilt fresh on every install (see the postinstall script), so this is
-  // what actually determines which engine binaries ship with the deployment.
-  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+  provider   = "prisma-client"
+  output     = "../app/generated/prisma"
+  // Engine-less client (Wasm query compiler + driver adapter, see
+  // lib/prisma.ts) instead of the native Rust "library" engine binary — the
+  // binary approach doesn't reliably survive Vercel's serverless bundling
+  // with a custom generator output path.
+  engineType = "client"
 }
 
 datasource db {

@@ -1,6 +1,4 @@
-import { PrismaClient } from "../app/generated/prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "../lib/prisma";
 
 const CHALLENGES: { week: number; title: string; criteria: string }[] = [
   { week: 1, title: "Highest Team Score", criteria: "Highest total points" },

@@ -7,7 +7,9 @@ update in real time.
 ## Stack
 
 - [Next.js](https://nextjs.org) (App Router) + TypeScript + Tailwind CSS
-- [Prisma](https://www.prisma.io) + [Supabase](https://supabase.com) Postgres
+- [Prisma](https://www.prisma.io) + [Supabase](https://supabase.com) Postgres, via the
+  Wasm `@prisma/adapter-pg` driver adapter rather than Prisma's native binary query
+  engine (see Deploying below for why)
 - Deployed on [Vercel](https://vercel.com)
 - A single password-protected `/admin` panel (no user accounts) for the commissioner to
   edit weekly challenge winners, FAAB moves, buy-in status, and the draft order note
@@ -74,6 +76,26 @@ site — the FAAB tracker and challenge-winner dropdowns pull from this list.
    create the migration, commit the generated `prisma/migrations/` folder, then run
    `npx prisma migrate deploy` against the production Supabase project before or after
    deploying the code that depends on it. Vercel does not run migrations automatically.
+
+### Why a driver adapter instead of Prisma's default engine
+
+Prisma's schema (`generator client`) sets `engineType = "client"`, and
+[`lib/prisma.ts`](lib/prisma.ts) constructs the client with a `@prisma/adapter-pg`
+adapter instead of a plain connection string. This is deliberate, not incidental —
+Prisma's default setup ships a native Rust query engine binary (`libquery_engine-*.so.node`)
+alongside the generated client, and that binary reliably failed to survive Vercel's
+serverless bundling for this project's custom generator `output` path (`app/generated/prisma`
+instead of the default `node_modules/@prisma/client`), surfacing as
+`PrismaClientInitializationError: ... could not locate the Query Engine for runtime
+"rhel-openssl-3.0.x"` — a well-documented Prisma+Vercel+custom-output issue. `binaryTargets`
+and Next's `outputFileTracingIncludes` are the commonly suggested workarounds, but didn't
+resolve it here even after confirming the binary was correctly traced into the build
+output. The driver adapter sidesteps the whole problem: `engineType = "client"` compiles
+queries in pure TypeScript with no native binary or Wasm file at all (verified — `prisma
+generate` produces only `.ts` files under `app/generated/prisma`), so there's nothing for
+Vercel's bundler to lose track of. If you ever regenerate `lib/prisma.ts` from a Prisma
+example/template, keep the adapter — reverting to `new PrismaClient()` alone will
+reintroduce this failure on deploy even though it works fine locally.
 
 ## Updating the rulebook content
 
