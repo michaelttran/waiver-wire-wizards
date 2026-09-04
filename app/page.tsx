@@ -34,7 +34,7 @@ export default function HomePage() {
                   <td>$50</td>
                 </tr>
                 <tr>
-                  <td>Playoff / Extra Entry</td>
+                  <td>Weekly Challenges</td>
                   <td>$14</td>
                 </tr>
               </tbody>
