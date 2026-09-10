@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { isAuthed } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { formatSyncTimestamp } from "@/lib/formatDate";
 import SectionCard from "@/components/SectionCard";
 import {
   addFaabMove,
@@ -81,7 +82,7 @@ export default async function AdminPage() {
                 {" "}
                 Last synced{" "}
                 <span className="font-600">
-                  {settings.sleeperLastSynced.toLocaleString()}
+                  {formatSyncTimestamp(settings.sleeperLastSynced)}
                 </span>
                 .
               </>

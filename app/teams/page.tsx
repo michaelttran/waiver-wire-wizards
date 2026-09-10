@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import SectionCard from "@/components/SectionCard";
 import { positionColor } from "@/lib/draftBoardStyle";
+import { formatSyncTimestamp } from "@/lib/formatDate";
 import {
   getPlayerGrades,
   gradeColor,
@@ -88,7 +89,7 @@ export default async function TeamsPage() {
           </a>
           .
           {settings?.sleeperLastSynced && (
-            <> Rosters last synced {settings.sleeperLastSynced.toLocaleString()}.</>
+            <> Rosters last synced {formatSyncTimestamp(settings.sleeperLastSynced)}.</>
           )}
         </p>
       </div>
