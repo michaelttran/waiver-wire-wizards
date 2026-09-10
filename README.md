@@ -1,5 +1,7 @@
 # Waiver Wire Wizards
 
+![Waiver Wire Wizards](public/wizard.png)
+
 The league hub for Waiver Wire Wizards — rules, scoring, weekly challenges, and FAAB
 tracking, built to replace the static rulebook PDF with something the commissioner can
 update in real time.
