@@ -74,8 +74,8 @@ export default async function AdminPage() {
           className="flex flex-wrap items-center justify-between gap-3 p-4"
         >
           <p className="text-xs text-ink/60">
-            Pulls team/owner names, draft order, and the full draft board straight from your
-            Sleeper league.
+            Pulls team/owner names, draft order, the full draft board, and current rosters
+            straight from your Sleeper league. Also runs automatically once a day.
             {settings?.sleeperLastSynced && (
               <>
                 {" "}

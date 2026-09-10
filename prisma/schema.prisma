@@ -31,6 +31,25 @@ model Team {
   faabMoves     FaabTransaction[]
   challengeWins WeeklyChallenge[]
   draftPicks    DraftPick[]
+  roster        RosterPlayer[]
+}
+
+// Current roster snapshot, replaced wholesale on every Sleeper sync (see
+// DraftPick for the same pattern). Distinct from DraftPick, which is a
+// permanent record of what was drafted — this tracks who owns a player *now*,
+// after waivers/trades have moved things around.
+model RosterPlayer {
+  id              String   @id @default(cuid())
+  team            Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId          String
+  sleeperPlayerId String
+  playerName      String
+  playerPosition  String
+  nflTeam         String?
+  slot            String // "starter" | "bench" | "ir" | "taxi"
+  updatedAt       DateTime @updatedAt
+
+  @@unique([teamId, sleeperPlayerId])
 }
 
 model DraftPick {

@@ -30,6 +30,24 @@ type SleeperPick = {
   metadata: SleeperPickMetadata;
 };
 
+type SleeperRoster = {
+  owner_id: string | null;
+  players: string[] | null;
+  starters: string[] | null;
+  reserve: string[] | null;
+  taxi: string[] | null;
+};
+
+type SleeperPlayer = {
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  position?: string;
+  team?: string | null;
+};
+
+type SleeperPlayersMap = Record<string, SleeperPlayer>;
+
 async function sleeperFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${SLEEPER_API}${path}`, { cache: "no-store" });
   if (!res.ok) {
@@ -41,6 +59,23 @@ async function sleeperFetch<T>(path: string): Promise<T> {
 function pickPlayerName(metadata: SleeperPickMetadata): string {
   if (metadata.position === "DEF") return metadata.last_name;
   return `${metadata.first_name} ${metadata.last_name}`.trim();
+}
+
+function rosterPlayerName(playerId: string, player: SleeperPlayer | undefined): string {
+  if (!player) return playerId;
+  if (player.position === "DEF") return player.last_name || player.full_name || playerId;
+  return (
+    player.full_name ||
+    `${player.first_name ?? ""} ${player.last_name ?? ""}`.trim() ||
+    playerId
+  );
+}
+
+function rosterSlot(playerId: string, roster: SleeperRoster): string {
+  if (roster.starters?.includes(playerId)) return "starter";
+  if (roster.reserve?.includes(playerId)) return "ir";
+  if (roster.taxi?.includes(playerId)) return "taxi";
+  return "bench";
 }
 
 export async function syncSleeperLeague(leagueId: string) {
@@ -102,11 +137,51 @@ export async function syncSleeperLeague(leagueId: string) {
     }
   }
 
+  const rosters = await sleeperFetch<SleeperRoster[]>(`/league/${leagueId}/rosters`);
+  // Sleeper asks that this ~5MB dump be pulled "at most once per day" per
+  // league — fine here since this runs from the daily cron and the
+  // occasional manual admin click, never per-request.
+  const players = await sleeperFetch<SleeperPlayersMap>(`/players/nfl`);
+
+  const rosterRows: {
+    teamId: string;
+    sleeperPlayerId: string;
+    playerName: string;
+    playerPosition: string;
+    nflTeam: string | null;
+    slot: string;
+  }[] = [];
+
+  for (const roster of rosters) {
+    const teamId = roster.owner_id ? teamIdBySleeperUserId.get(roster.owner_id) : undefined;
+    if (!teamId) continue;
+
+    for (const playerId of roster.players ?? []) {
+      const player = players[playerId];
+      rosterRows.push({
+        teamId,
+        sleeperPlayerId: playerId,
+        playerName: rosterPlayerName(playerId, player),
+        playerPosition: player?.position ?? "?",
+        nflTeam: player?.team ?? null,
+        slot: rosterSlot(playerId, roster),
+      });
+    }
+  }
+
+  // createMany instead of one create() per row (as draft picks use) — a full
+  // league roster sync is 150+ rows, which blew past the interactive
+  // transaction's default 5s timeout when done as individual creates.
+  await prisma.$transaction([
+    prisma.rosterPlayer.deleteMany({}),
+    prisma.rosterPlayer.createMany({ data: rosterRows }),
+  ]);
+
   await prisma.appSettings.upsert({
     where: { id: 1 },
     update: { sleeperLastSynced: new Date() },
     create: { id: 1, sleeperLastSynced: new Date() },
   });
 
-  return { teamCount: users.length, pickCount };
+  return { teamCount: users.length, pickCount, rosterPlayerCount: rosterRows.length };
 }

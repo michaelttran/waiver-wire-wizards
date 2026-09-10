@@ -25,6 +25,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${bodyFont.variable} ${displayFont.variable} h-full antialiased`}
+      // Some mobile browsers/carrier proxies inject their own attributes
+      // (e.g. a remote-frame token) onto <html> before React hydrates.
+      // React already leaves those alone either way — this just silences
+      // the resulting console warning. See Next's hydration-mismatch guide.
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-cream text-ink">
         <Navbar />

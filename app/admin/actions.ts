@@ -18,6 +18,7 @@ function revalidatePublicPages() {
   revalidatePath("/challenges");
   revalidatePath("/faab");
   revalidatePath("/draft");
+  revalidatePath("/teams");
 }
 
 export async function login(formData: FormData) {

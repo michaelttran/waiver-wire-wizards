@@ -6,10 +6,12 @@ import { useState } from "react";
 const LINKS = [
   { href: "/", label: "Overview" },
   { href: "/rules", label: "Rules & Scoring" },
+  { href: "/teams", label: "Teams" },
   { href: "/challenges", label: "Weekly Challenges" },
   { href: "/faab", label: "FAAB Tracker" },
   { href: "/draft", label: "Draft Order" },
   { href: "/punishments", label: "Punishments" },
+  { href: "/data", label: "Data" },
 ];
 
 export default function Navbar() {
