@@ -12,4 +12,9 @@ export const PUNISHMENTS: Punishment[] = [
       "100 consecutive hotdogs/beers. Can split it however you want and you're allowed water",
   },
   { proposedBy: "Julian", punishment: "Surströmming" },
+    {
+    proposedBy: "Darin",
+    punishment:
+      "spend a day working/fundraising/whatever (e.g., lemonade stand, mcdonald’s, bake sale, etc) - all proceeds cover costs and the rest goes to next years pool",
+  },
 ];
