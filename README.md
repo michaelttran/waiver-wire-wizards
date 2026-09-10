@@ -10,9 +10,12 @@ update in real time.
 - [Prisma](https://www.prisma.io) + [Supabase](https://supabase.com) Postgres, via the
   Wasm `@prisma/adapter-pg` driver adapter rather than Prisma's native binary query
   engine (see Deploying below for why)
-- Deployed on [Vercel](https://vercel.com)
+- Deployed on [Vercel](https://vercel.com), including a daily [Vercel Cron](https://vercel.com/docs/cron-jobs)
+  job that syncs teams/rosters/draft results from Sleeper
+- Player grades pulled live from a linked Google Sheet (public CSV export, no API key)
 - A single password-protected `/admin` panel (no user accounts) for the commissioner to
-  edit weekly challenge winners, FAAB moves, buy-in status, and the draft order note
+  edit weekly challenge winners, FAAB moves, buy-in status, the draft order note, and to
+  manually trigger a Sleeper sync
 
 ## Pages
 
@@ -20,9 +23,12 @@ update in real time.
 | -------------- | -------------------------------------------------------------------- |
 | `/`            | Overview — buy-in, payouts, FAAB budget, quick links                |
 | `/rules`       | Full static rulebook: roster slots + every scoring category         |
+| `/teams`       | Every team's current roster (synced from Sleeper), with per-player and per-team grades |
 | `/challenges`  | 14-week challenge schedule with live winners, plus tiebreakers      |
 | `/faab`        | Per-team FAAB budgets, buy-in/playoff paid status, recent moves     |
 | `/draft`       | Draft order + full round-by-round draft results board              |
+| `/punishments` | Proposed punishments for whoever finishes last of the toilet bowl   |
+| `/data`        | Link to the Google Sheet that powers the grades shown on `/teams`   |
 | `/admin`       | Commissioner-only dashboard to edit all of the above                |
 | `/admin/login` | Password gate for `/admin`                                          |
 
@@ -53,8 +59,14 @@ See [`.env.example`](.env.example) for the full list with descriptions. In short
 - `ADMIN_PASSWORD` — the single shared password for the commissioner admin panel.
 - `SESSION_SECRET` — random string used to sign the admin session cookie. Change it to
   a long random value before deploying.
-- `SLEEPER_LEAGUE_ID` — optional; enables `npm run sync:sleeper` and the "Sync from
-  Sleeper" button on `/admin` to pull real teams/draft results from a Sleeper league.
+- `SLEEPER_LEAGUE_ID` — optional; enables `npm run sync:sleeper`, the "Sync from
+  Sleeper" button on `/admin`, and the daily cron to pull real teams/draft results/rosters
+  from a Sleeper league.
+- `CRON_SECRET` — optional; secures the daily `/api/cron/sleeper-sync` endpoint that
+  Vercel Cron hits (see Deploying below). Not needed for local dev.
+- `PLAYER_GRADES_SHEET_URL` — optional; a Google Sheet link (the normal "Share" link)
+  with a "Player Grades" tab, used to grade rostered players on `/teams` and linked from
+  `/data`. The sheet must be shared as "Anyone with the link" can view.
 
 ### First-time setup after seeding
 
@@ -68,10 +80,14 @@ site — the FAAB tracker and challenge-winner dropdowns pull from this list.
    `npx prisma migrate deploy` against it once (from your machine, with `.env` pointed
    at that project) to create the schema.
 2. In your Vercel project settings, add `DATABASE_URL`, `DIRECT_URL`, `ADMIN_PASSWORD`,
-   `SESSION_SECRET`, and (optionally) `SLEEPER_LEAGUE_ID` as environment variables — use
-   a strong random value for `SESSION_SECRET`, generated with `openssl rand -hex 32`.
+   `SESSION_SECRET`, and (optionally) `SLEEPER_LEAGUE_ID`, `CRON_SECRET`, and
+   `PLAYER_GRADES_SHEET_URL` as environment variables — use a strong random value for
+   `SESSION_SECRET` and `CRON_SECRET`, both generated with `openssl rand -hex 32`.
 3. Deploy. `npm install` runs `prisma generate` automatically via the `postinstall`
-   script, so no extra build configuration is needed on Vercel's end.
+   script, so no extra build configuration is needed on Vercel's end. [`vercel.json`](vercel.json)
+   defines a daily Vercel Cron job (`/api/cron/sleeper-sync`) that Vercel picks up
+   automatically on deploy — once `CRON_SECRET` is set, Vercel sends it as the
+   `Authorization: Bearer <value>` header the route checks, so nobody else can trigger it.
 4. Future schema changes: run `npx prisma migrate dev` locally against a dev database to
    create the migration, commit the generated `prisma/migrations/` folder, then run
    `npx prisma migrate deploy` against the production Supabase project before or after
@@ -104,6 +120,35 @@ mid-season) and live in [`lib/rulesData.ts`](lib/rulesData.ts). Edit that file a
 redeploy if league rules change. Everything else (challenge winners, FAAB, buy-in
 status, draft order note) is edited live through `/admin`.
 
+## Teams, rosters & player grades
+
+`/teams` shows who owns which players, plus a grade for every graded player and an
+overall grade per team. This combines two independent data sources:
+
+- **Rosters, teams, and draft results** ([`lib/sleeper.ts`](lib/sleeper.ts)) come from
+  the Sleeper API and are stored in Postgres (`Team`, `DraftPick`, `RosterPlayer`). This
+  data only updates when a sync runs — automatically once a day via the Vercel Cron job
+  in [`vercel.json`](vercel.json) (`app/api/cron/sleeper-sync/route.ts`), or immediately
+  via the "Sync from Sleeper" button on `/admin`. A roster move made on Sleeper (waiver,
+  trade, etc.) won't show up on `/teams` until one of those two things runs.
+- **Player grades** ([`lib/playerGrades.ts`](lib/playerGrades.ts)) are read live from the
+  "Player Grades" tab of the Google Sheet at `PLAYER_GRADES_SHEET_URL`, fetched as a
+  public CSV export (no API key or auth needed — the sheet just needs to be shared as
+  "Anyone with the link" can view). Columns are read by header name, not position, since
+  the sheet is actively edited and has already been reshuffled once. The fetch is cached
+  for up to an hour via `unstable_cache` — independent of the page's own rendering, since
+  every page in this app sets `revalidate = 0` (fully dynamic), which would otherwise
+  force a live Google Sheets round-trip on every single page view. The sheet only grades
+  RB/WR/TE, so QB/K/DEF (and any player the sheet doesn't cover) render without a grade.
+  The per-team grade is the average score of that team's graded players, converted to a
+  letter using the sheet's own "Cutoff → Grade" legend (read dynamically, not hardcoded,
+  so it can't drift out of sync with the sheet).
+
+Rostered players are matched to sheet rows by normalized name only (accents/punctuation/
+suffixes stripped, case-insensitive) — there's no shared ID between Sleeper and the
+sheet. This is reliable in practice but not bulletproof: a rare exact-name collision
+between two active NFL players could grab the wrong grade.
+
 ## Security
 
 - **Admin auth** — a single shared password (`ADMIN_PASSWORD`) gates `/admin`. On
@@ -111,6 +156,10 @@ status, draft order note) is edited live through `/admin`.
   (see [`lib/auth.ts`](lib/auth.ts)); password and signature checks both use
   `crypto.timingSafeEqual` to avoid timing attacks. There are no other accounts, tokens,
   or roles.
+- **Cron auth** — `/api/cron/sleeper-sync` checks the `Authorization: Bearer <value>`
+  header against `CRON_SECRET` before running a sync, so only Vercel's own cron invocation
+  (which Vercel sends that header for automatically once the env var is set) can trigger
+  it — anyone else hitting the URL gets a 401.
 - **Rate limiting** — [`lib/rateLimit.ts`](lib/rateLimit.ts) implements a sliding-window
   limiter backed by the database (so it holds up across Vercel's independent serverless
   instances, unlike an in-memory counter). It's applied to:
@@ -130,7 +179,9 @@ status, draft order note) is edited live through `/admin`.
   (`deepmerge-ts` < 8.0.0, pulled in transitively by `@prisma/config`, used only by the
   Prisma CLI at build/dev time — not part of the deployed app) is pinned to a patched
   version via `overrides` in `package.json` rather than downgrading Prisma itself.
-- **Secrets** — `ADMIN_PASSWORD`, `SESSION_SECRET`, `DATABASE_URL`/`DIRECT_URL`, and the
-  local HTTPS dev certificate (`/certificates`) are all gitignored. Change the default
-  `ADMIN_PASSWORD` and generate a real `SESSION_SECRET` before sharing the site with
-  anyone (see Environment variables above).
+- **Secrets** — `ADMIN_PASSWORD`, `SESSION_SECRET`, `CRON_SECRET`, `DATABASE_URL`/
+  `DIRECT_URL`, and the local HTTPS dev certificate (`/certificates`) are all gitignored.
+  Change the default `ADMIN_PASSWORD` and generate real `SESSION_SECRET`/`CRON_SECRET`
+  values before sharing the site with anyone (see Environment variables above).
+  `PLAYER_GRADES_SHEET_URL` isn't sensitive — it only works unauthenticated because the
+  sheet is link-shared as view-only.
