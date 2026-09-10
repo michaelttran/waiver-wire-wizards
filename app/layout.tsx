@@ -3,6 +3,7 @@ import { Inter, Cinzel } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { Analytics } from "@vercel/analytics/next";
 
 const bodyFont = Inter({
   variable: "--font-body",
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Navbar />
         <main className="flex-1 w-full">{children}</main>
         <Footer />
+        <Analytics />
       </body>
     </html>
   );
