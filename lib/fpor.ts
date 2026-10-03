@@ -61,6 +61,15 @@ export function fpor(
   return Math.max(0, points - levels[position]);
 }
 
+// What a pick "should" return: if every player were drafted in order of the
+// FPOR they actually produced, the Nth pick would get the Nth-best FPOR.
+// Comparing a player's FPOR with this for the pick he went at makes busts go
+// negative (a 1st-rounder returning 3rd-round value) and steals go positive.
+export function expectedFporByPick(fporValues: number[]): (overall: number) => number {
+  const sorted = [...fporValues].sort((a, b) => b - a);
+  return (overall) => sorted[overall - 1] ?? 0;
+}
+
 // Loose name key for matching the same player across sources (Sleeper,
 // Fantasy Football Calculator, hand-entered picks), which disagree on
 // punctuation and suffixes like "Jr." or "III".

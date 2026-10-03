@@ -3,7 +3,13 @@ import SectionCard from "@/components/SectionCard";
 import CopyImageButton from "@/components/CopyImageButton";
 import ValueGrid, { type ValueBoard, type ValueCell } from "@/components/ValueGrid";
 import { avatarColor, initials, positionColor, POSITION_COLORS } from "@/lib/draftBoardStyle";
-import { fpor, playerKey, replacementLevels, VALUE_POSITIONS } from "@/lib/fpor";
+import {
+  expectedFporByPick,
+  fpor,
+  playerKey,
+  replacementLevels,
+  VALUE_POSITIONS,
+} from "@/lib/fpor";
 
 export const metadata = {
   title: "Draft — Waiver Wire Wizards",
@@ -15,6 +21,7 @@ export const revalidate = 0;
 const DEFAULT_ROUNDS = 15;
 
 type BoardPlayer = {
+  overall: number;
   playerName: string;
   playerPosition: string;
   sleeperPlayerId: string | null;
@@ -25,7 +32,8 @@ type BoardPlayer = {
 function makeCellBuilder(
   pointsById: Map<string, number>,
   pointsByKey: Map<string, number>,
-  levels: Record<string, number>
+  levels: Record<string, number>,
+  expectedAt: (overall: number) => number
 ) {
   const takenAtPosition = new Map<string, number>();
   return (player: BoardPlayer, label: string): ValueCell => {
@@ -34,12 +42,14 @@ function makeCellBuilder(
     const points =
       (player.sleeperPlayerId ? pointsById.get(player.sleeperPlayerId) : undefined) ??
       pointsByKey.get(playerKey(player.playerName, player.playerPosition));
+    const value = fpor(points, player.playerPosition, levels);
     return {
       label,
       playerName: player.playerName,
       position: player.playerPosition,
       positionRank,
-      fpor: fpor(points, player.playerPosition, levels),
+      fpor: value,
+      vsPick: value === null ? null : value - expectedAt(player.overall),
       graded: (VALUE_POSITIONS as readonly string[]).includes(player.playerPosition),
     };
   };
@@ -65,6 +75,9 @@ export default async function DraftPage() {
   const pointsByKey = new Map(
     seasonPoints.map((p) => [playerKey(p.playerName, p.playerPosition), p.points])
   );
+  const expectedAt = expectedFporByPick(
+    seasonPoints.map((p) => fpor(p.points, p.playerPosition, levels) ?? 0)
+  );
   const hasPoints = seasonPoints.length > 0;
   const replacementText = VALUE_POSITIONS.map(
     (pos) => `${pos} ${levels[pos].toFixed(1)}`
@@ -74,7 +87,7 @@ export default async function DraftPage() {
 
   let leagueBoard: ValueBoard | null = null;
   if (hasPoints && picks.length > 0) {
-    const cellFor = makeCellBuilder(pointsById, pointsByKey, levels);
+    const cellFor = makeCellBuilder(pointsById, pointsByKey, levels, expectedAt);
     const cellByPick = new Map(
       picks.map((p) => [`${p.teamId}:${p.round}`, cellFor(p, `${p.round}.${p.pick}`)])
     );
@@ -89,7 +102,7 @@ export default async function DraftPage() {
 
   let marketBoard: ValueBoard | null = null;
   if (hasPoints && adp.length > 0 && teamCount > 0) {
-    const cellFor = makeCellBuilder(pointsById, pointsByKey, levels);
+    const cellFor = makeCellBuilder(pointsById, pointsByKey, levels, expectedAt);
     const roundCount = rounds.length || DEFAULT_ROUNDS;
     const rows: (ValueCell | null)[][] = Array.from({ length: roundCount }, () =>
       Array<ValueCell | null>(teamCount).fill(null)
@@ -239,6 +252,8 @@ export default async function DraftPage() {
           Every pick colored by fantasy points over replacement (FPOR): half-PPR points
           scored so far minus what the best non-starter at that position has scored in a
           league our size (QB, 2 RB, 2 WR, TE, FLEX). It puts every position on one scale.
+          &ldquo;vs. Pick&rdquo; compares that with what the pick should have returned (the
+          Nth pick gets the Nth-best FPOR this season), so busts go negative.
         </p>
         <ValueGrid market={marketBoard} league={leagueBoard} />
       </SectionCard>

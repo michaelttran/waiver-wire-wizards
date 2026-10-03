@@ -193,7 +193,10 @@ between two active NFL players could grab the wrong grade.
 Below the draft board on `/draft`, every pick is colored by fantasy points over
 replacement: a player's season-to-date points (scored with the league's own Sleeper
 scoring settings) minus the points of the best player at his position who wouldn't start
-in a league this size (QB, 2 RB, 2 WR, TE, FLEX), floored at zero. Logic lives in
+in a league this size (QB, 2 RB, 2 WR, TE, FLEX), floored at zero. A second toggle
+switches the coloring to "vs. Pick": that FPOR minus what the pick should have returned
+(the Nth pick is expected to return the Nth-best FPOR this season), which goes negative
+for busts. Logic lives in
 [`lib/fpor.ts`](lib/fpor.ts). A toggle switches between two layouts:
 
 - **Market ADP** — a one-time snapshot of Fantasy Football Calculator's half-PPR ADP

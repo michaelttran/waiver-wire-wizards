@@ -9,6 +9,7 @@ export type ValueCell = {
   position: string;
   positionRank: number;
   fpor: number | null; // null = no stats (N/A)
+  vsPick: number | null; // fpor minus what this pick should return; can be negative
   graded: boolean; // false for K/DEF, which FPOR doesn't cover
 };
 
@@ -19,17 +20,66 @@ export type ValueBoard = {
 };
 
 type Mode = "market" | "league";
+type Metric = "vsPick" | "fpor";
 
 const NEUTRAL = "#1a2033";
 const ZERO_RED = "hsl(0, 62%, 30%)";
 
-// 0 / N/A is red; anything above zero runs red → yellow → green up to the
+function hue(hueDegrees: number) {
+  return `hsl(${Math.round(hueDegrees)}, 58%, 32%)`;
+}
+
+// FPOR: 0 / N/A is red, anything above zero runs red → yellow → green up to the
 // board's best value, like the PPR Rankings graphic this is modeled on.
-function cellColor(cell: ValueCell, max: number) {
+// vs. Pick: diverging around zero — red for busts, yellow for "got what you
+// paid for", green for steals — scaled to the board's largest miss or hit.
+function cellColor(cell: ValueCell, metric: Metric, scale: number) {
   if (!cell.graded) return NEUTRAL;
-  if (cell.fpor === null || cell.fpor <= 0 || max <= 0) return ZERO_RED;
-  const t = Math.min(1, cell.fpor / max);
-  return `hsl(${Math.round(t * 120)}, 58%, ${30 + Math.round(t * 4)}%)`;
+  const value = cell[metric];
+  if (value === null) return ZERO_RED;
+  if (metric === "fpor") {
+    if (value <= 0 || scale <= 0) return ZERO_RED;
+    return hue(Math.min(1, value / scale) * 120);
+  }
+  const t = scale > 0 ? Math.max(-1, Math.min(1, value / scale)) : 0;
+  return hue(60 + t * 60);
+}
+
+function formatValue(cell: ValueCell, metric: Metric) {
+  if (!cell.graded) return "—";
+  const value = cell[metric];
+  if (value === null) return metric === "fpor" ? "FPOR N/A" : "vs pick N/A";
+  const sign = value < 0 ? "−" : "+";
+  const text = `${sign}${Math.abs(value).toFixed(1)}`;
+  return metric === "fpor" ? `FPOR ${text}` : `${text} vs pick`;
+}
+
+function ToggleGroup<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T;
+  onChange: (value: T) => void;
+  options: { value: T; label: string; disabled?: boolean }[];
+}) {
+  return (
+    <div className="inline-flex rounded border border-purple/30 overflow-hidden text-xs font-600">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          disabled={o.disabled}
+          onClick={() => onChange(o.value)}
+          className={`px-3 py-1.5 transition-colors disabled:opacity-40 ${
+            value === o.value ? "bg-purple text-cream" : "text-purple hover:bg-purple/10"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export default function ValueGrid({
@@ -40,36 +90,35 @@ export default function ValueGrid({
   league: ValueBoard | null;
 }) {
   const [mode, setMode] = useState<Mode>(market ? "market" : "league");
+  const [metric, setMetric] = useState<Metric>("vsPick");
   const board = mode === "market" ? market : league;
-  const max = Math.max(
+  const scale = Math.max(
     0,
-    ...(board?.rows.flat().map((c) => (c?.graded && c.fpor) || 0) ?? [])
+    ...(board?.rows.flat().map((c) => Math.abs((c?.graded && c[metric]) || 0)) ?? [])
   );
-
-  const options: { value: Mode; label: string; disabled: boolean }[] = [
-    { value: "market", label: "Market ADP", disabled: !market },
-    { value: "league", label: "Our Draft", disabled: !league },
-  ];
 
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-3">
-        <div className="inline-flex rounded border border-purple/30 overflow-hidden text-xs font-600">
-          {options.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              disabled={o.disabled}
-              onClick={() => setMode(o.value)}
-              className={`px-3 py-1.5 transition-colors disabled:opacity-40 ${
-                mode === o.value ? "bg-purple text-cream" : "text-purple hover:bg-purple/10"
-              }`}
-            >
-              {o.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-2">
+          <ToggleGroup
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: "market", label: "Market ADP", disabled: !market },
+              { value: "league", label: "Our Draft", disabled: !league },
+            ]}
+          />
+          <ToggleGroup
+            value={metric}
+            onChange={setMetric}
+            options={[
+              { value: "vsPick", label: "vs. Pick" },
+              { value: "fpor", label: "FPOR" },
+            ]}
+          />
         </div>
-        <CopyImageButton targetId="value-grid" fileName={`value-grid-${mode}.png`} />
+        <CopyImageButton targetId="value-grid" fileName={`value-grid-${mode}-${metric}.png`} />
       </div>
       <div
         id="value-grid"
@@ -98,7 +147,12 @@ export default function ValueGrid({
                   <div
                     key={`${r}:${c}`}
                     className="snap-start rounded-md p-1.5 sm:p-2 min-h-[64px] sm:min-h-[72px] flex flex-col justify-between text-cream"
-                    style={{ background: cell ? cellColor(cell, max) : NEUTRAL }}
+                    style={{ background: cell ? cellColor(cell, metric, scale) : NEUTRAL }}
+                    title={
+                      cell?.graded
+                        ? `${formatValue(cell, "fpor")} · ${formatValue(cell, "vsPick")}`
+                        : undefined
+                    }
                   >
                     {cell ? (
                       <>
@@ -110,11 +164,7 @@ export default function ValueGrid({
                           {cell.playerName}
                         </span>
                         <span className="text-[9px] sm:text-[10px] font-700 opacity-90">
-                          {!cell.graded
-                            ? "—"
-                            : cell.fpor === null
-                              ? "FPOR N/A"
-                              : `FPOR +${cell.fpor.toFixed(1)}`}
+                          {formatValue(cell, metric)}
                         </span>
                       </>
                     ) : (
@@ -125,14 +175,16 @@ export default function ValueGrid({
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2 pt-3 text-cream/70 text-[10px] sm:text-[11px]">
-              <span>0 / N/A</span>
+              <span>{metric === "fpor" ? "0 / N/A" : `−${scale.toFixed(0)} bust`}</span>
               <span
                 className="h-2.5 w-28 rounded"
                 style={{
-                  background: `linear-gradient(to right, ${ZERO_RED}, hsl(60, 58%, 32%), hsl(120, 58%, 34%))`,
+                  background: `linear-gradient(to right, ${hue(0)}, ${hue(60)}, ${hue(120)})`,
                 }}
               />
-              <span>max FPOR · K/DEF not graded</span>
+              <span>
+                {metric === "fpor" ? "max FPOR" : `+${scale.toFixed(0)} steal`} · K/DEF not graded
+              </span>
             </div>
           </>
         ) : (
