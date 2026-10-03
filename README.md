@@ -28,7 +28,7 @@ update in real time.
 | `/teams`       | Every team's current roster (synced from Sleeper), with per-player and per-team grades |
 | `/challenges`  | 14-week challenge schedule with live winners, plus tiebreakers      |
 | `/faab`        | Per-team FAAB budgets, buy-in/playoff paid status, recent moves     |
-| `/draft`       | Draft order + full round-by-round draft results board              |
+| `/draft`       | Draft order, full draft results board, and the FPOR value grid      |
 | `/punishments` | Proposed punishments for whoever finishes last of the toilet bowl   |
 | `/data`        | Link to the Google Sheet that powers the grades shown on `/teams`   |
 | `/admin`       | Commissioner-only dashboard to edit all of the above                |
@@ -187,3 +187,20 @@ between two active NFL players could grab the wrong grade.
   values before sharing the site with anyone (see Environment variables above).
   `PLAYER_GRADES_SHEET_URL` isn't sensitive — it only works unauthenticated because the
   sheet is link-shared as view-only.
+
+## Value grid (FPOR)
+
+Below the draft board on `/draft`, every pick is colored by fantasy points over
+replacement: a player's season-to-date points (scored with the league's own Sleeper
+scoring settings) minus the points of the best player at his position who wouldn't start
+in a league this size (QB, 2 RB, 2 WR, TE, FLEX), floored at zero. Logic lives in
+[`lib/fpor.ts`](lib/fpor.ts). A toggle switches between two layouts:
+
+- **Market ADP** — a one-time snapshot of Fantasy Football Calculator's half-PPR ADP
+  ([`lib/marketAdp.ts`](lib/marketAdp.ts)), stored in `AdpEntry`. The Sleeper sync only
+  takes it when the table is empty, so it stays frozen at draft-season ADP; "Retake ADP
+  snapshot" on `/admin` replaces it.
+- **Our Draft** — the league's actual picks from `DraftPick`.
+
+Season points are rebuilt into `PlayerSeasonPoints` on every Sleeper sync from Sleeper's
+weekly stat lines.

@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import SectionCard from "@/components/SectionCard";
 import CopyImageButton from "@/components/CopyImageButton";
+import ValueGrid, { type ValueBoard, type ValueCell } from "@/components/ValueGrid";
 import { avatarColor, initials, positionColor, POSITION_COLORS } from "@/lib/draftBoardStyle";
+import { fpor, playerKey, replacementLevels, VALUE_POSITIONS } from "@/lib/fpor";
 
 export const metadata = {
   title: "Draft — Waiver Wire Wizards",
@@ -9,16 +11,103 @@ export const metadata = {
 
 export const revalidate = 0;
 
+// Rounds shown on the market board when there's no league draft to match.
+const DEFAULT_ROUNDS = 15;
+
+type BoardPlayer = {
+  playerName: string;
+  playerPosition: string;
+  sleeperPlayerId: string | null;
+};
+
+// Turns players in draft order into value-grid cells, numbering each one's
+// position rank within that order (the 5th WR taken is WR5).
+function makeCellBuilder(
+  pointsById: Map<string, number>,
+  pointsByKey: Map<string, number>,
+  levels: Record<string, number>
+) {
+  const takenAtPosition = new Map<string, number>();
+  return (player: BoardPlayer, label: string): ValueCell => {
+    const positionRank = (takenAtPosition.get(player.playerPosition) ?? 0) + 1;
+    takenAtPosition.set(player.playerPosition, positionRank);
+    const points =
+      (player.sleeperPlayerId ? pointsById.get(player.sleeperPlayerId) : undefined) ??
+      pointsByKey.get(playerKey(player.playerName, player.playerPosition));
+    return {
+      label,
+      playerName: player.playerName,
+      position: player.playerPosition,
+      positionRank,
+      fpor: fpor(points, player.playerPosition, levels),
+      graded: (VALUE_POSITIONS as readonly string[]).includes(player.playerPosition),
+    };
+  };
+}
+
 export default async function DraftPage() {
-  const [settings, teams, picks] = await Promise.all([
+  const [settings, teams, picks, adp, seasonPoints] = await Promise.all([
     prisma.appSettings.findUnique({ where: { id: 1 } }),
     prisma.team.findMany({ orderBy: { draftPosition: "asc" } }),
     prisma.draftPick.findMany({ orderBy: { overall: "asc" } }),
+    prisma.adpEntry.findMany({ orderBy: { overall: "asc" } }),
+    prisma.playerSeasonPoints.findMany(),
   ]);
 
   const draftOrder = teams.filter((t) => t.draftPosition !== null);
   const rounds = Array.from(new Set(picks.map((p) => p.round))).sort((a, b) => a - b);
   const picksByTeamAndRound = new Map(picks.map((p) => [`${p.teamId}:${p.round}`, p]));
+
+  // Value grid: FPOR for every pick, by market ADP or by our actual draft.
+  const teamCount = draftOrder.length || teams.length;
+  const levels = replacementLevels(seasonPoints, teamCount);
+  const pointsById = new Map(seasonPoints.map((p) => [p.sleeperPlayerId, p.points]));
+  const pointsByKey = new Map(
+    seasonPoints.map((p) => [playerKey(p.playerName, p.playerPosition), p.points])
+  );
+  const hasPoints = seasonPoints.length > 0;
+  const replacementText = VALUE_POSITIONS.map(
+    (pos) => `${pos} ${levels[pos].toFixed(1)}`
+  ).join(" · ");
+  const caption = (source: string) =>
+    `${source}. Half-PPR points through week ${settings?.statsThroughWeek ?? "?"} over replacement (${replacementText}).`;
+
+  let leagueBoard: ValueBoard | null = null;
+  if (hasPoints && picks.length > 0) {
+    const cellFor = makeCellBuilder(pointsById, pointsByKey, levels);
+    const cellByPick = new Map(
+      picks.map((p) => [`${p.teamId}:${p.round}`, cellFor(p, `${p.round}.${p.pick}`)])
+    );
+    leagueBoard = {
+      columns: draftOrder.map((t) => t.name),
+      rows: rounds.map((round) =>
+        draftOrder.map((t) => cellByPick.get(`${t.id}:${round}`) ?? null)
+      ),
+      caption: caption("Our league draft"),
+    };
+  }
+
+  let marketBoard: ValueBoard | null = null;
+  if (hasPoints && adp.length > 0 && teamCount > 0) {
+    const cellFor = makeCellBuilder(pointsById, pointsByKey, levels);
+    const roundCount = rounds.length || DEFAULT_ROUNDS;
+    const rows: (ValueCell | null)[][] = Array.from({ length: roundCount }, () =>
+      Array<ValueCell | null>(teamCount).fill(null)
+    );
+    for (const entry of adp.slice(0, roundCount * teamCount)) {
+      const index = entry.overall - 1;
+      const round = Math.floor(index / teamCount) + 1;
+      const pickInRound = (index % teamCount) + 1;
+      // Snake order: odd rounds run left to right, even rounds come back.
+      const column = round % 2 === 1 ? pickInRound - 1 : teamCount - pickInRound;
+      rows[round - 1][column] = cellFor(entry, `${round}.${pickInRound}`);
+    }
+    marketBoard = {
+      columns: Array.from({ length: teamCount }, (_, i) => `Slot ${i + 1}`),
+      rows,
+      caption: caption(`Market ADP (${settings?.adpSnapshotNote ?? "snapshot"})`),
+    };
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-8">
@@ -144,6 +233,15 @@ export default async function DraftPage() {
           </div>
         </SectionCard>
       )}
+
+      <SectionCard title="Value Grid">
+        <p className="px-4 pt-3 text-xs text-ink/60">
+          Every pick colored by fantasy points over replacement (FPOR): half-PPR points
+          scored so far minus what the best non-starter at that position has scored in a
+          league our size (QB, 2 RB, 2 WR, TE, FLEX). It puts every position on one scale.
+        </p>
+        <ValueGrid market={marketBoard} league={leagueBoard} />
+      </SectionCard>
     </div>
   );
 }
