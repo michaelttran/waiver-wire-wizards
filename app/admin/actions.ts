@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { checkPassword, createSession, destroySession, isAuthed } from "@/lib/auth";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
-import { syncSleeperLeague } from "@/lib/sleeper";
+import { refreshMarketAdp, syncSleeperLeague } from "@/lib/sleeper";
 
 async function requireAuth() {
   if (!(await isAuthed())) {
@@ -205,4 +205,22 @@ export async function syncFromSleeper() {
 
   revalidatePath("/admin");
   revalidatePublicPages();
+}
+
+export async function retakeAdpSnapshot() {
+  await requireAuth();
+  const leagueId = process.env.SLEEPER_LEAGUE_ID;
+  if (!leagueId) return;
+
+  // Shares the sync's limit — this also pulls Sleeper's full player dump.
+  const withinLimit = await checkRateLimit("sleeper-sync", "global", {
+    windowMs: 60 * 1000,
+    max: 3,
+  });
+  if (!withinLimit) return;
+
+  await refreshMarketAdp(leagueId);
+
+  revalidatePath("/admin");
+  revalidatePath("/draft");
 }

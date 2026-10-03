@@ -1,6 +1,22 @@
 import { prisma } from "@/lib/prisma";
+import { VALUE_POSITIONS } from "@/lib/fpor";
+import { snapshotMarketAdp } from "@/lib/marketAdp";
 
 const SLEEPER_API = "https://api.sleeper.app/v1";
+
+type SleeperLeague = {
+  season: string;
+  total_rosters: number;
+  scoring_settings: Record<string, number>;
+};
+
+type SleeperNflState = {
+  season: string;
+  season_type: string; // "pre" | "regular" | "post" | "off"
+  week: number;
+};
+
+type SleeperWeekStats = Record<string, Record<string, number>>;
 
 type SleeperUser = {
   user_id: string;
@@ -23,6 +39,7 @@ type SleeperPickMetadata = {
 };
 
 type SleeperPick = {
+  player_id: string;
   round: number;
   pick_no: number;
   draft_slot: number;
@@ -46,7 +63,7 @@ type SleeperPlayer = {
   team?: string | null;
 };
 
-type SleeperPlayersMap = Record<string, SleeperPlayer>;
+export type SleeperPlayersMap = Record<string, SleeperPlayer>;
 
 async function sleeperFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${SLEEPER_API}${path}`, { cache: "no-store" });
@@ -131,6 +148,7 @@ export async function syncSleeperLeague(leagueId: string) {
           playerName: pickPlayerName(p.metadata),
           playerPosition: p.metadata.position,
           nflTeam: p.metadata.team,
+          sleeperPlayerId: p.player_id,
         },
       });
       pickCount++;
@@ -177,11 +195,108 @@ export async function syncSleeperLeague(leagueId: string) {
     prisma.rosterPlayer.createMany({ data: rosterRows }),
   ]);
 
+  // Season points and the market ADP snapshot feed only the value grid on
+  // /draft, so a failure there (e.g. a third-party API being down) is logged
+  // rather than failing the whole sync.
+  const league = await sleeperFetch<SleeperLeague>(`/league/${leagueId}`);
+  let statsThroughWeek: number | null = null;
+  try {
+    statsThroughWeek = await syncSeasonPoints(league, players);
+  } catch (err) {
+    console.error("Season points sync failed", err);
+  }
+
+  let adpEntryCount = await prisma.adpEntry.count();
+  if (adpEntryCount === 0) {
+    try {
+      adpEntryCount = await snapshotMarketAdp(league.total_rosters, league.season, players);
+    } catch (err) {
+      console.error("Market ADP snapshot failed", err);
+    }
+  }
+
   await prisma.appSettings.upsert({
     where: { id: 1 },
-    update: { sleeperLastSynced: new Date() },
-    create: { id: 1, sleeperLastSynced: new Date() },
+    update: {
+      sleeperLastSynced: new Date(),
+      ...(statsThroughWeek !== null && { statsThroughWeek }),
+    },
+    create: {
+      id: 1,
+      sleeperLastSynced: new Date(),
+      statsThroughWeek,
+    },
   });
 
-  return { teamCount: users.length, pickCount, rosterPlayerCount: rosterRows.length };
+  return {
+    teamCount: users.length,
+    pickCount,
+    rosterPlayerCount: rosterRows.length,
+    statsThroughWeek,
+    adpEntryCount,
+  };
+}
+
+// Rebuilds PlayerSeasonPoints from Sleeper's weekly stat lines, scored with the
+// league's own scoring_settings — Sleeper keys stats and scoring rules by the
+// same names (pass_td, rec, rush_yd, ...), so a player's points are just the
+// sum of stat × rule. Returns the last week included.
+async function syncSeasonPoints(
+  league: SleeperLeague,
+  players: SleeperPlayersMap
+): Promise<number> {
+  const state = await sleeperFetch<SleeperNflState>(`/state/nfl`);
+  let lastWeek = 0;
+  if (state.season === league.season) {
+    if (state.season_type === "regular") lastWeek = state.week;
+    else if (state.season_type === "post" || state.season_type === "off") lastWeek = 18;
+  } else if (Number(state.season) > Number(league.season)) {
+    lastWeek = 18;
+  }
+
+  const totals = new Map<string, { points: number; gamesPlayed: number }>();
+  for (let week = 1; week <= lastWeek; week++) {
+    const stats = await sleeperFetch<SleeperWeekStats>(
+      `/stats/nfl/regular/${league.season}/${week}`
+    );
+    for (const [playerId, line] of Object.entries(stats)) {
+      const position = players[playerId]?.position;
+      if (!position || !(VALUE_POSITIONS as readonly string[]).includes(position)) continue;
+
+      let points = 0;
+      for (const [stat, value] of Object.entries(line)) {
+        points += value * (league.scoring_settings[stat] ?? 0);
+      }
+      const total = totals.get(playerId) ?? { points: 0, gamesPlayed: 0 };
+      total.points += points;
+      if ((line.gp ?? 0) > 0) total.gamesPlayed++;
+      totals.set(playerId, total);
+    }
+  }
+
+  const rows = [...totals.entries()]
+    .filter(([, t]) => t.gamesPlayed > 0)
+    .map(([playerId, t]) => ({
+      sleeperPlayerId: playerId,
+      playerName: rosterPlayerName(playerId, players[playerId]),
+      playerPosition: players[playerId]?.position ?? "?",
+      nflTeam: players[playerId]?.team ?? null,
+      points: Math.round(t.points * 100) / 100,
+      gamesPlayed: t.gamesPlayed,
+    }));
+
+  await prisma.$transaction([
+    prisma.playerSeasonPoints.deleteMany({}),
+    prisma.playerSeasonPoints.createMany({ data: rows }),
+  ]);
+
+  return lastWeek;
+}
+
+// Retakes the market ADP snapshot on demand (from /admin). The daily sync only
+// takes one when none exists, so the grid stays frozen at draft-season ADP.
+export async function refreshMarketAdp(leagueId: string) {
+  const league = await sleeperFetch<SleeperLeague>(`/league/${leagueId}`);
+  const players = await sleeperFetch<SleeperPlayersMap>(`/players/nfl`);
+  return snapshotMarketAdp(league.total_rosters, league.season, players);
 }
