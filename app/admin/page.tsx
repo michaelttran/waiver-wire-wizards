@@ -101,8 +101,8 @@ export default async function AdminPage() {
           className="flex flex-wrap items-center justify-between gap-3 p-4 border-t border-purple/10"
         >
           <p className="text-xs text-ink/60">
-            Market ADP for the value grid on the Draft page is a snapshot, retaken
-            automatically every Tuesday (and by the first sync if there isn&apos;t one).
+            Market ADP for the value grid on the Draft page is a one-time snapshot, taken by
+            the first sync after it&apos;s empty, so it stays at draft-season ADP.
             {settings?.adpSnapshotAt ? (
               <>
                 {" "}

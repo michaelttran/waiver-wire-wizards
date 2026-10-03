@@ -293,9 +293,8 @@ async function syncSeasonPoints(
   return lastWeek;
 }
 
-// Retakes the market ADP snapshot — weekly from the Tuesday cron
-// (app/api/cron/adp-snapshot) and on demand from /admin. The daily sync only
-// takes one when none exists.
+// Retakes the market ADP snapshot on demand (from /admin). The daily sync only
+// takes one when none exists, so the grid stays frozen at draft-season ADP.
 export async function refreshMarketAdp(leagueId: string) {
   const league = await sleeperFetch<SleeperLeague>(`/league/${leagueId}`);
   const players = await sleeperFetch<SleeperPlayersMap>(`/players/nfl`);
