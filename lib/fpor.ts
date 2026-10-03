@@ -1,10 +1,8 @@
 // Fantasy points over replacement (FPOR) for the value grid on /draft.
 //
-// Replacement level at a position is the best player there who wouldn't crack
-// a starting lineup in this league: fill every team's QB/RB/WR/TE slots with
-// the top scorers at each position, then the FLEX slots with the best
-// remaining RB/WR/TE, and whoever is next in line at each position sets the
-// bar. A player's FPOR is his points minus that bar, floored at zero.
+// Replacement level at a position is the best player there sitting on our
+// league's waiver wire right now (see waiverReplacement). A player's FPOR is
+// his points minus that bar, floored at zero.
 
 export const VALUE_POSITIONS = ["QB", "RB", "WR", "TE"] as const;
 
@@ -15,6 +13,38 @@ const FLEX_POSITIONS = new Set(["RB", "WR", "TE"]);
 
 export type SeasonPoints = { playerPosition: string; points: number };
 
+export type Replacement = {
+  points: number;
+  playerName: string | null; // the free agent setting the bar; null for the formula fallback
+};
+
+// Replacement = the top-scoring unrostered player at each position. Falls back
+// to the lineup formula (replacementLevels) for a position with no free agent
+// who has scored, so the bar is never missing.
+export function waiverReplacement(
+  players: (SeasonPoints & { sleeperPlayerId: string; playerName: string })[],
+  rosteredIds: Set<string>,
+  teamCount: number
+): Record<string, Replacement> {
+  const formula = replacementLevels(players, teamCount);
+  const result: Record<string, Replacement> = {};
+  for (const position of Object.keys(DEDICATED_STARTERS)) {
+    result[position] = { points: formula[position], playerName: null };
+  }
+  for (const p of players) {
+    if (rosteredIds.has(p.sleeperPlayerId) || !(p.playerPosition in result)) continue;
+    const current = result[p.playerPosition];
+    if (current.playerName === null || p.points > current.points) {
+      result[p.playerPosition] = { points: p.points, playerName: p.playerName };
+    }
+  }
+  return result;
+}
+
+// The old lineup-formula bar: the best player at each position who wouldn't
+// crack a starting lineup in a league this size. Fill every team's QB/RB/WR/TE
+// slots with the top scorers, then the FLEX slots with the best remaining
+// RB/WR/TE; whoever is next in line at each position sets the bar.
 export function replacementLevels(
   players: SeasonPoints[],
   teamCount: number

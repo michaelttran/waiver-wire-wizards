@@ -192,12 +192,14 @@ between two active NFL players could grab the wrong grade.
 
 Below the draft board on `/draft`, every pick is colored by fantasy points over
 replacement: a player's season-to-date points (scored with the league's own Sleeper
-scoring settings) minus the points of the best player at his position who wouldn't start
-in a league this size (QB, 2 RB, 2 WR, TE, FLEX), floored at zero. A second toggle
+scoring settings) minus the points of the best free agent at his position on our waiver
+wire right now, floored at zero. Who's rostered is pulled live from Sleeper's rosters
+endpoint (cached for an hour), falling back to the last synced `RosterPlayer` rows. Hover a
+player (tap on mobile) for the full comparison. One toggle
 switches the coloring to "vs. Pick": that FPOR minus what the pick should have returned
 (the Nth pick is expected to return the Nth-best FPOR this season), which goes negative
 for busts. Logic lives in
-[`lib/fpor.ts`](lib/fpor.ts). A toggle switches between two layouts:
+[`lib/fpor.ts`](lib/fpor.ts). Another toggle switches between two layouts:
 
 - **Market ADP** — a one-time snapshot of Fantasy Football Calculator's half-PPR ADP
   ([`lib/marketAdp.ts`](lib/marketAdp.ts)), stored in `AdpEntry`. The Sleeper sync only

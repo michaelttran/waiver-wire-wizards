@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { VALUE_POSITIONS } from "@/lib/fpor";
 import { snapshotMarketAdp } from "@/lib/marketAdp";
@@ -300,3 +301,22 @@ export async function refreshMarketAdp(leagueId: string) {
   const players = await sleeperFetch<SleeperPlayersMap>(`/players/nfl`);
   return snapshotMarketAdp(league.total_rosters, league.season, players);
 }
+
+// Everyone currently on a roster in the league (including IR and taxi), pulled
+// live from Sleeper for the value grid's waiver-wire replacement level rather
+// than from the daily-synced RosterPlayer table, so a pickup or drop shows up
+// within the hour. The rosters endpoint is small, unlike /players/nfl.
+async function fetchRosteredPlayerIds(leagueId: string): Promise<string[]> {
+  const rosters = await sleeperFetch<SleeperRoster[]>(`/league/${leagueId}/rosters`);
+  const ids = new Set<string>();
+  for (const roster of rosters) {
+    for (const id of [...(roster.players ?? []), ...(roster.reserve ?? []), ...(roster.taxi ?? [])]) {
+      ids.add(id);
+    }
+  }
+  return [...ids];
+}
+
+export const getRosteredPlayerIds = unstable_cache(fetchRosteredPlayerIds, ["sleeper-rostered"], {
+  revalidate: 60 * 60,
+});
