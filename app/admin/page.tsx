@@ -3,6 +3,7 @@ import { isAuthed } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatSyncTimestamp } from "@/lib/formatDate";
 import SectionCard from "@/components/SectionCard";
+import VisitorLog from "@/components/VisitorLog";
 import {
   addFaabMove,
   deleteFaabMove,
@@ -422,6 +423,8 @@ export default async function AdminPage() {
           </button>
         </form>
       </SectionCard>
+
+      <VisitorLog />
     </div>
   );
 }
