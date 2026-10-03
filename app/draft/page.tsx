@@ -7,9 +7,11 @@ import {
   expectedFporByPick,
   fpor,
   playerKey,
-  replacementLevels,
+  type Replacement,
   VALUE_POSITIONS,
+  waiverReplacement,
 } from "@/lib/fpor";
+import { getRosteredPlayerIds } from "@/lib/sleeper";
 
 export const metadata = {
   title: "Draft — Waiver Wire Wizards",
@@ -19,6 +21,21 @@ export const revalidate = 0;
 
 // Rounds shown on the market board when there's no league draft to match.
 const DEFAULT_ROUNDS = 15;
+
+// Who's rostered right now, live from Sleeper (cached an hour). Falls back to
+// the daily-synced RosterPlayer table if Sleeper can't be reached.
+async function rosteredPlayerIds(): Promise<Set<string>> {
+  const leagueId = process.env.SLEEPER_LEAGUE_ID;
+  if (leagueId) {
+    try {
+      return new Set(await getRosteredPlayerIds(leagueId));
+    } catch (err) {
+      console.error("Live roster pull failed; using last synced rosters", err);
+    }
+  }
+  const rows = await prisma.rosterPlayer.findMany({ select: { sleeperPlayerId: true } });
+  return new Set(rows.map((r) => r.sleeperPlayerId));
+}
 
 type BoardPlayer = {
   overall: number;
@@ -32,6 +49,7 @@ type BoardPlayer = {
 function makeCellBuilder(
   pointsById: Map<string, number>,
   pointsByKey: Map<string, number>,
+  replacements: Record<string, Replacement>,
   levels: Record<string, number>,
   expectedAt: (overall: number) => number
 ) {
@@ -43,25 +61,32 @@ function makeCellBuilder(
       (player.sleeperPlayerId ? pointsById.get(player.sleeperPlayerId) : undefined) ??
       pointsByKey.get(playerKey(player.playerName, player.playerPosition));
     const value = fpor(points, player.playerPosition, levels);
+    const expected = expectedAt(player.overall);
+    const replacement = replacements[player.playerPosition] ?? null;
     return {
       label,
       playerName: player.playerName,
       position: player.playerPosition,
       positionRank,
+      points: points ?? null,
+      replacementName: replacement?.playerName ?? null,
+      replacementPoints: replacement?.points ?? null,
+      expected,
       fpor: value,
-      vsPick: value === null ? null : value - expectedAt(player.overall),
+      vsPick: value === null ? null : value - expected,
       graded: (VALUE_POSITIONS as readonly string[]).includes(player.playerPosition),
     };
   };
 }
 
 export default async function DraftPage() {
-  const [settings, teams, picks, adp, seasonPoints] = await Promise.all([
+  const [settings, teams, picks, adp, seasonPoints, rostered] = await Promise.all([
     prisma.appSettings.findUnique({ where: { id: 1 } }),
     prisma.team.findMany({ orderBy: { draftPosition: "asc" } }),
     prisma.draftPick.findMany({ orderBy: { overall: "asc" } }),
     prisma.adpEntry.findMany({ orderBy: { overall: "asc" } }),
     prisma.playerSeasonPoints.findMany(),
+    rosteredPlayerIds(),
   ]);
 
   const draftOrder = teams.filter((t) => t.draftPosition !== null);
@@ -70,7 +95,10 @@ export default async function DraftPage() {
 
   // Value grid: FPOR for every pick, by market ADP or by our actual draft.
   const teamCount = draftOrder.length || teams.length;
-  const levels = replacementLevels(seasonPoints, teamCount);
+  const replacements = waiverReplacement(seasonPoints, rostered, teamCount);
+  const levels = Object.fromEntries(
+    Object.entries(replacements).map(([pos, r]) => [pos, r.points])
+  );
   const pointsById = new Map(seasonPoints.map((p) => [p.sleeperPlayerId, p.points]));
   const pointsByKey = new Map(
     seasonPoints.map((p) => [playerKey(p.playerName, p.playerPosition), p.points])
@@ -79,15 +107,16 @@ export default async function DraftPage() {
     seasonPoints.map((p) => fpor(p.points, p.playerPosition, levels) ?? 0)
   );
   const hasPoints = seasonPoints.length > 0;
-  const replacementText = VALUE_POSITIONS.map(
-    (pos) => `${pos} ${levels[pos].toFixed(1)}`
-  ).join(" · ");
+  const replacementText = VALUE_POSITIONS.map((pos) => {
+    const r = replacements[pos];
+    return `${pos}: ${r.playerName ?? "formula"} ${r.points.toFixed(1)}`;
+  }).join(" · ");
   const caption = (source: string) =>
-    `${source}. Half-PPR points through week ${settings?.statsThroughWeek ?? "?"} over replacement (${replacementText}).`;
+    `${source}. Half-PPR points through week ${settings?.statsThroughWeek ?? "?"} over the best free agent on our waiver wire (${replacementText}).`;
 
   let leagueBoard: ValueBoard | null = null;
   if (hasPoints && picks.length > 0) {
-    const cellFor = makeCellBuilder(pointsById, pointsByKey, levels, expectedAt);
+    const cellFor = makeCellBuilder(pointsById, pointsByKey, replacements, levels, expectedAt);
     const cellByPick = new Map(
       picks.map((p) => [`${p.teamId}:${p.round}`, cellFor(p, `${p.round}.${p.pick}`)])
     );
@@ -102,7 +131,7 @@ export default async function DraftPage() {
 
   let marketBoard: ValueBoard | null = null;
   if (hasPoints && adp.length > 0 && teamCount > 0) {
-    const cellFor = makeCellBuilder(pointsById, pointsByKey, levels, expectedAt);
+    const cellFor = makeCellBuilder(pointsById, pointsByKey, replacements, levels, expectedAt);
     const roundCount = rounds.length || DEFAULT_ROUNDS;
     const rows: (ValueCell | null)[][] = Array.from({ length: roundCount }, () =>
       Array<ValueCell | null>(teamCount).fill(null)
@@ -250,8 +279,9 @@ export default async function DraftPage() {
       <SectionCard title="Value Grid">
         <p className="px-4 pt-3 text-xs text-ink/60">
           Every pick colored by fantasy points over replacement (FPOR): half-PPR points
-          scored so far minus what the best non-starter at that position has scored in a
-          league our size (QB, 2 RB, 2 WR, TE, FLEX). It puts every position on one scale.
+          scored so far minus what the best free agent at that position on our waiver wire
+          has scored. It puts every position on one scale. Hover a player (tap on mobile)
+          for the full comparison.
           &ldquo;vs. Pick&rdquo; compares that with what the pick should have returned (the
           Nth pick gets the Nth-best FPOR this season), so busts go negative.
         </p>
