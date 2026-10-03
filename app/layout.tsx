@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Analytics } from "@vercel/analytics/next";
+import VisitTracker from "@/components/VisitTracker";
 
 const bodyFont = Inter({
   variable: "--font-body",
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main className="flex-1 w-full">{children}</main>
         <Footer />
         <Analytics />
+        <VisitTracker />
       </body>
     </html>
   );

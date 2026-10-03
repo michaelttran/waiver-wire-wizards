@@ -142,3 +142,20 @@ model RateLimitAttempt {
 
   @@index([scope, key, createdAt])
 }
+
+// One row per page view, for the commissioner's Visitors log in /admin.
+// Vercel Analytics never exposes IPs, so this is the only place they live.
+// Rows older than 30 days are deleted as new ones come in.
+model PageVisit {
+  id        String   @id @default(cuid())
+  path      String
+  ip        String
+  city      String?
+  region    String?
+  country   String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([ip, createdAt])
+}
