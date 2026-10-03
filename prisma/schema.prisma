@@ -19,7 +19,11 @@ datasource db {
 
 model Team {
   id            String            @id @default(cuid())
+  // The one place a team's display name lives; every page reads it from here.
+  // The Sleeper sync keeps it current unless the commissioner set a custom
+  // name in /admin, which locks it until they switch back to Sleeper's.
   name          String
+  nameLocked    Boolean           @default(false)
   ownerName     String
   faabStarting  Int               @default(100)
   buyInPaid     Boolean           @default(false)

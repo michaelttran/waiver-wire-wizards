@@ -96,6 +96,29 @@ function rosterSlot(playerId: string, roster: SleeperRoster): string {
   return "bench";
 }
 
+export function sleeperTeamName(user: SleeperUser): string {
+  return user.metadata?.team_name?.trim() || `Team ${user.display_name}`;
+}
+
+// Name-only refresh for the admin button: one cheap Sleeper call instead of
+// the full roster/draft sync. Skips teams whose name the commissioner locked.
+export async function syncTeamNames(leagueId: string): Promise<number> {
+  const users = await sleeperFetch<SleeperUser[]>(`/league/${leagueId}/users`);
+  let changed = 0;
+  for (const user of users) {
+    const team = await prisma.team.findUnique({ where: { sleeperUserId: user.user_id } });
+    if (!team) continue;
+    const name = team.nameLocked ? team.name : sleeperTeamName(user);
+    if (name === team.name && user.display_name === team.ownerName) continue;
+    await prisma.team.update({
+      where: { id: team.id },
+      data: { name, ownerName: user.display_name },
+    });
+    changed++;
+  }
+  return changed;
+}
+
 export async function syncSleeperLeague(leagueId: string) {
   const users = await sleeperFetch<SleeperUser[]>(`/league/${leagueId}/users`);
   const drafts = await sleeperFetch<SleeperDraft[]>(`/league/${leagueId}/drafts`);
@@ -114,7 +137,7 @@ export async function syncSleeperLeague(leagueId: string) {
       }));
     const draftPosition = draft?.draft_order?.[user.user_id] ?? null;
     const data = {
-      name: user.metadata?.team_name?.trim() || `Team ${user.display_name}`,
+      name: existing?.nameLocked ? existing.name : sleeperTeamName(user),
       ownerName: user.display_name,
       draftPosition,
       sleeperUserId: user.user_id,

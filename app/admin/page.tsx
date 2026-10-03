@@ -7,12 +7,15 @@ import {
   addFaabMove,
   deleteFaabMove,
   logout,
+  refreshTeamNames,
+  renameTeam,
   replaceDraftPicks,
   retakeAdpSnapshot,
   setChallengeWinner,
   syncFromSleeper,
   updateDraftNote,
   updateTeam,
+  revertToSleeperName,
 } from "@/app/admin/actions";
 
 export const metadata = {
@@ -123,6 +126,62 @@ export default async function AdminPage() {
         </form>
       </SectionCard>
 
+      <SectionCard title="Team Names">
+        <form
+          action={refreshTeamNames}
+          className="flex flex-wrap items-center justify-between gap-3 p-4"
+        >
+          <p className="text-xs text-ink/60">
+            Every page on the site (and the weekly recaps) shows the names below. They follow
+            Sleeper automatically on every sync. Saving a custom name locks it until you switch
+            it back to Sleeper&apos;s.
+          </p>
+          <button
+            type="submit"
+            className="rounded bg-purple text-cream text-xs font-600 px-3 py-1.5 hover:bg-purple-light transition-colors shrink-0"
+          >
+            Refresh names from Sleeper
+          </button>
+        </form>
+        <ul className="border-t border-purple/10 divide-y divide-purple/10">
+          {teams.map((team) => (
+            <li key={team.id} className="flex flex-wrap items-center gap-2 px-4 py-2">
+              <form action={renameTeam} className="flex flex-1 min-w-0 items-center gap-2">
+                <input type="hidden" name="id" value={team.id} />
+                <input
+                  name="name"
+                  defaultValue={team.name}
+                  required
+                  aria-label={`Team name for ${team.ownerName}`}
+                  className="flex-1 min-w-0 rounded border border-purple/20 px-2 py-1 text-sm"
+                />
+                <button
+                  type="submit"
+                  className="rounded bg-purple text-cream text-xs font-600 px-3 py-1.5 hover:bg-purple-light transition-colors shrink-0"
+                >
+                  Save
+                </button>
+              </form>
+              <span className="text-xs text-ink/60 w-28">{team.ownerName}</span>
+              {team.nameLocked ? (
+                <form action={revertToSleeperName} className="flex items-center gap-2">
+                  <input type="hidden" name="id" value={team.id} />
+                  <span className="text-xs font-600 text-purple">Custom (locked)</span>
+                  <button
+                    type="submit"
+                    className="rounded border border-purple text-purple text-xs font-600 px-2 py-1 hover:bg-purple/10 transition-colors"
+                  >
+                    Use Sleeper name
+                  </button>
+                </form>
+              ) : (
+                <span className="text-xs text-ink/50">From Sleeper</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </SectionCard>
+
       <SectionCard title="Teams, Buy-In & FAAB">
         <div className="overflow-x-auto">
           <table className="wwz-table">
@@ -146,11 +205,7 @@ export default async function AdminPage() {
                       className="grid grid-cols-7 gap-2 items-center px-4 py-2"
                     >
                       <input type="hidden" name="id" value={team.id} />
-                      <input
-                        name="name"
-                        defaultValue={team.name}
-                        className="rounded border border-purple/20 px-2 py-1 text-sm"
-                      />
+                      <span className="text-sm font-600 truncate">{team.name}</span>
                       <input
                         name="ownerName"
                         defaultValue={team.ownerName}

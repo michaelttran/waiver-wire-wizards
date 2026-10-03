@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { checkPassword, createSession, destroySession, isAuthed } from "@/lib/auth";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
-import { refreshMarketAdp, syncSleeperLeague } from "@/lib/sleeper";
+import { refreshMarketAdp, syncSleeperLeague, syncTeamNames } from "@/lib/sleeper";
 
 async function requireAuth() {
   if (!(await isAuthed())) {
@@ -19,6 +19,7 @@ function revalidatePublicPages() {
   revalidatePath("/faab");
   revalidatePath("/draft");
   revalidatePath("/teams");
+  revalidatePath("/standings");
 }
 
 export async function login(formData: FormData) {
@@ -47,7 +48,6 @@ export async function logout() {
 export async function updateTeam(formData: FormData) {
   await requireAuth();
   const id = String(formData.get("id"));
-  const name = String(formData.get("name") ?? "").trim();
   const ownerName = String(formData.get("ownerName") ?? "").trim();
   const faabStarting = Number(formData.get("faabStarting") ?? 100);
   const buyInPaid = formData.get("buyInPaid") === "on";
@@ -55,12 +55,52 @@ export async function updateTeam(formData: FormData) {
   const draftPositionRaw = String(formData.get("draftPosition") ?? "").trim();
   const draftPosition = draftPositionRaw === "" ? null : Number(draftPositionRaw);
 
-  if (!id || !name) return;
+  if (!id) return;
 
   await prisma.team.update({
     where: { id },
-    data: { name, ownerName, faabStarting, buyInPaid, playoffPaid, draftPosition },
+    data: { ownerName, faabStarting, buyInPaid, playoffPaid, draftPosition },
   });
+
+  revalidatePath("/admin");
+  revalidatePublicPages();
+}
+
+// A name typed here is locked so the Sleeper sync won't overwrite it;
+// revertToSleeperName undoes that.
+export async function renameTeam(formData: FormData) {
+  await requireAuth();
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!id || !name) return;
+
+  await prisma.team.update({ where: { id }, data: { name, nameLocked: true } });
+
+  revalidatePath("/admin");
+  revalidatePublicPages();
+}
+
+export async function revertToSleeperName(formData: FormData) {
+  await requireAuth();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.team.update({ where: { id }, data: { nameLocked: false } });
+  await refreshTeamNames();
+}
+
+export async function refreshTeamNames() {
+  await requireAuth();
+  const leagueId = process.env.SLEEPER_LEAGUE_ID;
+  if (!leagueId) return;
+
+  const withinLimit = await checkRateLimit("sleeper-names", "global", {
+    windowMs: 60 * 1000,
+    max: 10,
+  });
+  if (!withinLimit) return;
+
+  await syncTeamNames(leagueId);
 
   revalidatePath("/admin");
   revalidatePublicPages();

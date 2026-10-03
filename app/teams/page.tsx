@@ -126,9 +126,7 @@ export default async function TeamsPage() {
                 key={team.id}
                 title={
                   <span className="flex items-center justify-between gap-2 flex-1 min-w-0">
-                    <span className="truncate">
-                      {team.name} &mdash; {team.ownerName}
-                    </span>
+                    <span className="truncate">{team.name}</span>
                     {teamGrade && teamScore !== null && (
                       <GradeBadge grade={teamGrade} score={teamScore} />
                     )}
