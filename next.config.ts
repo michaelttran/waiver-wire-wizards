@@ -2,6 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["192.168.1.47"],
+  // lib/recaps.ts reads these Markdown files at request time, which the
+  // tracer can't see on its own.
+  outputFileTracingIncludes: {
+    "/challenges": ["./content/recaps/**/*"],
+    "/standings": ["./content/recaps/**/*"],
+  },
   async headers() {
     return [
       {

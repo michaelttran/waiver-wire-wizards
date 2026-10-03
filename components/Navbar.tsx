@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "Overview" },
   { href: "/rules", label: "Rules & Scoring" },
   { href: "/teams", label: "Teams" },
+  { href: "/standings", label: "Standings" },
   { href: "/challenges", label: "Weekly Challenges" },
   { href: "/faab", label: "FAAB Tracker" },
   { href: "/draft", label: "Draft Order" },
