@@ -176,7 +176,6 @@ export default async function DraftPage() {
                   {team.draftPosition}
                 </span>
                 <span className="font-600">{team.name}</span>
-                <span className="text-ink/50">({team.ownerName})</span>
               </li>
             ))}
           </ol>
@@ -226,7 +225,7 @@ export default async function DraftPage() {
                     className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-700 text-white"
                     style={{ background: avatarColor(i) }}
                   >
-                    {initials(team.ownerName)}
+                    {initials(team.name)}
                   </div>
                   <div className="text-cream text-[11px] sm:text-xs font-700 text-center leading-tight">
                     {team.name}

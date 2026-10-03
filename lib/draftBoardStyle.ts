@@ -18,6 +18,10 @@ export function avatarColor(index: number) {
   return `hsl(${hue}, 55%, 55%)`;
 }
 
+// First letter of the first two words ("Thuy's Thot" -> "TT"), or the first
+// two letters of a one-word name ("Melatonin" -> "ME").
 export function initials(name: string) {
-  return name.slice(0, 2).toUpperCase();
+  const words = name.split(/[^\p{L}\p{N}']+/u).filter(Boolean);
+  const letters = words.length > 1 ? words[0][0] + words[1][0] : (words[0] ?? name).slice(0, 2);
+  return letters.toUpperCase();
 }

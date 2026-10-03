@@ -45,7 +45,6 @@ export default async function FaabPage() {
             <thead>
               <tr>
                 <th>Team</th>
-                <th>Owner</th>
                 <th>Starting</th>
                 <th>Spent</th>
                 <th>Remaining</th>
@@ -56,7 +55,6 @@ export default async function FaabPage() {
               {rows.map((team) => (
                 <tr key={team.id}>
                   <td className="font-600 text-purple whitespace-nowrap">{team.name}</td>
-                  <td className="whitespace-nowrap">{team.ownerName}</td>
                   <td>${team.faabStarting}</td>
                   <td>${team.spent}</td>
                   <td className={team.remaining <= 10 ? "text-red-600 font-600" : ""}>
