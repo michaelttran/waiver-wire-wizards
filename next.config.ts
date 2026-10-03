@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   // tracer can't see on its own.
   outputFileTracingIncludes: {
     "/challenges": ["./content/recaps/**/*"],
+    "/standings": ["./content/recaps/**/*"],
   },
   async headers() {
     return [

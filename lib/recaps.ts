@@ -41,10 +41,32 @@ export async function getRecaps(): Promise<Recap[]> {
   );
 }
 
-export async function getStandingsRecap(): Promise<{ title: string; html: string } | null> {
+export type StandingsRow = {
+  sleeperUserId: string;
+  name: string;
+  wins: number;
+  losses: number;
+  ties?: number;
+  points: number;
+  allPlayWins: number;
+  allPlayLosses: number;
+  playoffOdds: number;
+};
+
+export type Standings = { afterWeek: number; rows: StandingsRow[]; notesHtml: string };
+
+export async function getStandings(): Promise<Standings | null> {
+  let data: { afterWeek: number; rows: StandingsRow[] };
   try {
-    return await renderFile("standings.md");
+    data = JSON.parse(await readFile(path.join(RECAPS_DIR, "standings.json"), "utf8"));
   } catch {
     return null;
   }
+  let notesHtml = "";
+  try {
+    notesHtml = (await renderFile("standings.md")).html;
+  } catch {
+    // Commentary is optional; the table stands on its own.
+  }
+  return { ...data, notesHtml };
 }

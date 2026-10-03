@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import SectionCard from "@/components/SectionCard";
-import { getRecaps, getStandingsRecap } from "@/lib/recaps";
+import { getRecaps } from "@/lib/recaps";
 
 export const metadata = {
   title: "Weekly Challenges — Waiver Wire Wizards",
@@ -18,13 +18,12 @@ const TIEBREAKERS = [
 export const revalidate = 0;
 
 export default async function ChallengesPage() {
-  const [challenges, recaps, standings] = await Promise.all([
+  const [challenges, recaps] = await Promise.all([
     prisma.weeklyChallenge.findMany({
       orderBy: { week: "asc" },
       include: { winner: true },
     }),
     getRecaps(),
-    getStandingsRecap(),
   ]);
   const recapWeeks = new Set(recaps.map((r) => r.week));
 
@@ -76,16 +75,6 @@ export default async function ChallengesPage() {
           </tbody>
         </table>
       </SectionCard>
-
-      {standings && (
-        <SectionCard title={standings.title || "Standings and Playoff Odds"}>
-          <div
-            className="wwz-recap px-4 sm:px-6 py-5"
-            // Trusted content: these files are committed to this repo.
-            dangerouslySetInnerHTML={{ __html: standings.html }}
-          />
-        </SectionCard>
-      )}
 
       {recaps.length > 0 && (
         <SectionCard title="Weekly Recaps">

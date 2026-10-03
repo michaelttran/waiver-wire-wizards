@@ -7,10 +7,10 @@ Week 2 was all blowouts, plus a couple of managers who forgot how lineups work.
 ### The Games
 
 - **Godwin 141, Marvins Room 80.** JSN went for 38 and Marvins Room got the week's high score dropped on their head. Colston Loveland scored 0.8, in case anyone was wondering.
-- **Jed's 141, BIJAN MUSTARD 106.** Josh Allen put up 41, the best game of the season, and BIJAN still lost by 35. Amon-Ra, Purdy and DeVonta all went off for Jed's.
+- **La PortaPurdy 141, BIJAN MUSTARD 106.** Josh Allen put up 41, the best game of the season, and BIJAN still lost by 35. Amon-Ra, Purdy and DeVonta all went off for La PortaPurdy.
 - **WRong Strategy 122, annguy 83.** CeeDee scored 31. Mahomes scored 29 for annguy and got zero help.
-- **Melatonin 113, vickdabrick 83.** Dak scored 30 and the Vikings defense chipped in 17.
-- **Susanna's Sunshine 97, anewbie 90.** Davante Adams scored 36 and dragged the commish to a win while Saquon Barkley scored 2.5.
+- **Melatonin 113, Gibby Goo 83.** Dak scored 30 and the Vikings defense chipped in 17.
+- **Thuy's Thot 97, anewbie 90.** Davante Adams scored 36 and dragged the commish to a win while Saquon Barkley scored 2.5.
 - **Jettas 92, Strib Club 85.** Malik Nabers and DJ Moore combined for half a point. Half. A. Point.
 
 ### Coulda, Woulda, Shoulda
