@@ -71,10 +71,9 @@ model DraftPick {
   @@unique([overall])
 }
 
-// Market ADP frozen at the end of draft season, used by the value grid on
-// /draft. Taken once by the Sleeper sync when the table is empty (and on
-// demand from /admin) rather than every day, since market ADP keeps drifting
-// after the season starts and the grid is about where players went in drafts.
+// Market ADP snapshot used by the value grid on /draft. Retaken weekly by the
+// Tuesday cron and on demand from /admin; the daily Sleeper sync only takes
+// one when the table is empty.
 model AdpEntry {
   id              String   @id @default(cuid())
   overall         Int      @unique // 1-based rank by ADP

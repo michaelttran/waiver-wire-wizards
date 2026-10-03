@@ -196,10 +196,10 @@ scoring settings) minus the points of the best player at his position who wouldn
 in a league this size (QB, 2 RB, 2 WR, TE, FLEX), floored at zero. Logic lives in
 [`lib/fpor.ts`](lib/fpor.ts). A toggle switches between two layouts:
 
-- **Market ADP** — a one-time snapshot of Fantasy Football Calculator's half-PPR ADP
-  ([`lib/marketAdp.ts`](lib/marketAdp.ts)), stored in `AdpEntry`. The Sleeper sync only
-  takes it when the table is empty, so it stays frozen at draft-season ADP; "Retake ADP
-  snapshot" on `/admin` replaces it.
+- **Market ADP** — a snapshot of Fantasy Football Calculator's half-PPR ADP
+  ([`lib/marketAdp.ts`](lib/marketAdp.ts)), stored in `AdpEntry`. It's retaken every
+  Tuesday by a second Vercel Cron job (`app/api/cron/adp-snapshot/route.ts`), on demand
+  with "Retake ADP snapshot" on `/admin`, and by the daily sync if the table is empty.
 - **Our Draft** — the league's actual picks from `DraftPick`.
 
 Season points are rebuilt into `PlayerSeasonPoints` on every Sleeper sync from Sleeper's
