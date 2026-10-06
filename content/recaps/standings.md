@@ -1,5 +1,5 @@
-- **Luckiest team: {{team:1399172448351477760}}.** 2-1, but below the league median every single week. The schedule is carrying them.
-- **Unluckiest team: {{team:1395903900279635968}}.** 1-2 with the third-best all-play record. They're still a 69% favorite to make it, so don't feel too bad for them.
-- **Most likely to need a punishment: {{team:1395902621021147136}}.** 2-31 all-play. They have beaten two teams in three weeks, and the punishments page is getting bookmarked.
+- **Luckiest team: {{team:998325463934107648}}.** 2-2 with an 11-33 all-play record, second-worst in the league. They've finished above the league median once. The schedule is doing a lot of the work.
+- **Unluckiest team: {{team:1001617961007874048}}.** 1-3 with a winning all-play record (23-21). They've lost two games with the winning lineup on their own bench, so it's partly self-inflicted.
+- **Most likely to need a punishment: {{team:1395902621021147136}}.** The first win is in, but they're 5-39 all-play and the sim gives them about a 1% chance at the playoffs. Keep an eye on the commish too, at 1-3 with 8%.
 
-**Up next, Week 4: QB King.** Highest-scoring starting QB wins. {{team:1395902621021147136}}, please start Mahomes.
+**Up next, Week 5: Ground & Pound.** Highest combined RB1 and RB2 wins. Commish, maybe start the running back who scored.
