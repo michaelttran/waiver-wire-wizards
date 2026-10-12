@@ -2,6 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { positionColor } from "@/lib/draftBoardStyle";
+import { nflTeamLogoUrl } from "@/lib/nflTeams";
 import type { PulseEntry, TeamUsage, UsagePlayer, UsageStatLine } from "@/lib/usageStats";
 
 const PURPLE_LIGHT = "#6d3aa8";
@@ -439,7 +440,7 @@ export default function UsageExplorer({
   return (
     <div className="space-y-6">
       <div>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(118px,1fr))] gap-2">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
           {teams.map((t) => {
             const active = t.abbr === teamAbbr;
             return (
@@ -452,14 +453,27 @@ export default function UsageExplorer({
                   setExpanded({});
                 }}
                 title={t.hasData ? undefined : "No synced stats for this team yet"}
-                className={`relative text-left rounded-md border bg-white pl-3 pr-2.5 py-2 text-[13px] font-600 overflow-hidden ${
+                className={`relative flex items-center gap-2 text-left rounded-md border bg-white pl-3 pr-2.5 py-2 text-[13px] font-600 overflow-hidden ${
                   active ? "border-purple ring-2 ring-purple/20" : "border-purple/10"
                 } ${t.hasData ? "" : "opacity-35 cursor-not-allowed"}`}
               >
                 <span className="absolute left-0 top-0 bottom-0 w-[5px]" style={{ background: t.color }} />
-                <span className="font-700">{t.abbr}</span>
-                <span className="block text-[10px] font-500 text-ink/50 truncate">
-                  {t.name.replace(t.abbr, "").trim()}
+                {/* eslint-disable-next-line @next/next/no-img-element -- tiny third-party icon, not worth Next/Image's remote-pattern config */}
+                <img
+                  src={nflTeamLogoUrl(t.abbr)}
+                  alt=""
+                  width={24}
+                  height={24}
+                  className="shrink-0"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+                <span className="min-w-0">
+                  <span className="font-700 block">{t.abbr}</span>
+                  <span className="block text-[10px] font-500 text-ink/50 truncate">
+                    {t.name.replace(t.abbr, "").trim()}
+                  </span>
                 </span>
               </button>
             );
