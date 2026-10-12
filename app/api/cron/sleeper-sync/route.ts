@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { syncSleeperLeague } from "@/lib/sleeper";
 
+// The full sync (rosters, draft picks, season points + weekly usage stats
+// for every week so far, NGS receiving, ADP) reliably takes ~30s end to end.
+// Vercel's default function timeout is 10s unless raised explicitly — this
+// opts into the max a Hobby plan allows (Pro/Enterprise can go higher, but
+// 60s already leaves 2x headroom over the measured runtime).
+export const maxDuration = 60;
+
 // Vercel Cron invokes this on the schedule in vercel.json and sends
 // `Authorization: Bearer $CRON_SECRET` automatically when that env var is
 // set — this rejects anyone else who finds the URL.
@@ -24,6 +31,7 @@ export async function GET(request: NextRequest) {
   revalidatePath("/faab");
   revalidatePath("/draft");
   revalidatePath("/teams");
+  revalidatePath("/data");
   revalidatePath("/admin");
 
   return NextResponse.json(result);

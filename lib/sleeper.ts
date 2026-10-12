@@ -1,7 +1,10 @@
+import { randomUUID } from "node:crypto";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/app/generated/prisma/client";
 import { VALUE_POSITIONS } from "@/lib/fpor";
 import { snapshotMarketAdp } from "@/lib/marketAdp";
+import { syncNextGenReceiving } from "@/lib/nextgenStats";
 
 const SLEEPER_API = "https://api.sleeper.app/v1";
 
@@ -62,6 +65,7 @@ type SleeperPlayer = {
   full_name?: string;
   position?: string;
   team?: string | null;
+  gsis_id?: string | null; // NFL's own player id — the join key nflverse's NGS data uses
 };
 
 export type SleeperPlayersMap = Record<string, SleeperPlayer>;
@@ -230,6 +234,15 @@ export async function syncSleeperLeague(leagueId: string) {
     console.error("Season points sync failed", err);
   }
 
+  // Layers NGS separation/cushion/air-yards-share/YAC+- onto the
+  // WeeklyPlayerStat rows syncSeasonPoints just wrote — best-effort, same as
+  // ADP below, since it's a third-party (nflverse) feed outside Sleeper.
+  try {
+    await syncNextGenReceiving(league.season, players);
+  } catch (err) {
+    console.error("Next Gen Stats receiving sync failed", err);
+  }
+
   let adpEntryCount = await prisma.adpEntry.count();
   if (adpEntryCount === 0) {
     try {
@@ -261,10 +274,99 @@ export async function syncSleeperLeague(leagueId: string) {
   };
 }
 
-// Rebuilds PlayerSeasonPoints from Sleeper's weekly stat lines, scored with the
-// league's own scoring_settings — Sleeper keys stats and scoring rules by the
-// same names (pass_td, rec, rush_yd, ...), so a player's points are just the
-// sum of stat × rule. Returns the last week included.
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+type WeeklyPlayerStatRow = {
+  sleeperPlayerId: string;
+  playerName: string;
+  playerPosition: string;
+  nflTeam: string;
+  season: string;
+  week: number;
+  snapPct: number | null;
+  offSnaps: number | null;
+  teamOffSnaps: number | null;
+  carries: number | null;
+  rushYards: number | null;
+  rushTd: number | null;
+  rushYardsAfterContact: number | null;
+  targets: number | null;
+  receptions: number | null;
+  recYards: number | null;
+  recTd: number | null;
+  recAirYards: number | null;
+  targetSharePct: number | null;
+  teamPassAttempts: number | null;
+  passAttempts: number | null;
+  passCompletions: number | null;
+  passYards: number | null;
+  passTd: number | null;
+  interceptions: number | null;
+  fantasyPoints: number | null;
+};
+
+// Bulk upsert via one multi-row `INSERT ... ON CONFLICT DO UPDATE` instead of
+// Prisma's upsert() per row (one round trip per row adds up fast at ~400
+// rows/week — see the call site). The id is only used on the insert branch;
+// Postgres leaves it alone on conflict.
+async function upsertWeeklyPlayerStats(rows: WeeklyPlayerStatRow[]): Promise<void> {
+  const values = rows.map(
+    (r) => Prisma.sql`(
+      ${randomUUID()}, ${r.sleeperPlayerId}, ${r.playerName}, ${r.playerPosition}, ${r.nflTeam},
+      ${r.season}, ${r.week}, ${r.snapPct}, ${r.offSnaps}, ${r.teamOffSnaps},
+      ${r.carries}, ${r.rushYards}, ${r.rushTd}, ${r.rushYardsAfterContact}, ${r.targets}, ${r.receptions},
+      ${r.recYards}, ${r.recTd}, ${r.recAirYards}, ${r.targetSharePct}, ${r.teamPassAttempts},
+      ${r.passAttempts}, ${r.passCompletions}, ${r.passYards}, ${r.passTd}, ${r.interceptions},
+      ${r.fantasyPoints}, now()
+    )`
+  );
+
+  await prisma.$executeRaw`
+    INSERT INTO "WeeklyPlayerStat" (
+      "id", "sleeperPlayerId", "playerName", "playerPosition", "nflTeam",
+      "season", "week", "snapPct", "offSnaps", "teamOffSnaps",
+      "carries", "rushYards", "rushTd", "rushYardsAfterContact", "targets", "receptions",
+      "recYards", "recTd", "recAirYards", "targetSharePct", "teamPassAttempts",
+      "passAttempts", "passCompletions", "passYards", "passTd", "interceptions",
+      "fantasyPoints", "updatedAt"
+    )
+    VALUES ${Prisma.join(values)}
+    ON CONFLICT ("sleeperPlayerId", "season", "week") DO UPDATE SET
+      "playerName" = EXCLUDED."playerName",
+      "playerPosition" = EXCLUDED."playerPosition",
+      "nflTeam" = EXCLUDED."nflTeam",
+      "snapPct" = EXCLUDED."snapPct",
+      "offSnaps" = EXCLUDED."offSnaps",
+      "teamOffSnaps" = EXCLUDED."teamOffSnaps",
+      "carries" = EXCLUDED."carries",
+      "rushYards" = EXCLUDED."rushYards",
+      "rushTd" = EXCLUDED."rushTd",
+      "rushYardsAfterContact" = EXCLUDED."rushYardsAfterContact",
+      "targets" = EXCLUDED."targets",
+      "receptions" = EXCLUDED."receptions",
+      "recYards" = EXCLUDED."recYards",
+      "recTd" = EXCLUDED."recTd",
+      "recAirYards" = EXCLUDED."recAirYards",
+      "targetSharePct" = EXCLUDED."targetSharePct",
+      "teamPassAttempts" = EXCLUDED."teamPassAttempts",
+      "passAttempts" = EXCLUDED."passAttempts",
+      "passCompletions" = EXCLUDED."passCompletions",
+      "passYards" = EXCLUDED."passYards",
+      "passTd" = EXCLUDED."passTd",
+      "interceptions" = EXCLUDED."interceptions",
+      "fantasyPoints" = EXCLUDED."fantasyPoints",
+      "updatedAt" = EXCLUDED."updatedAt"
+  `;
+}
+
+// Rebuilds PlayerSeasonPoints *and* WeeklyPlayerStat from the same weekly
+// stat lines, scored with the league's own scoring_settings — Sleeper keys
+// stats and scoring rules by the same names (pass_td, rec, rush_yd, ...), so
+// a player's points are just the sum of stat × rule. One fetch per week
+// feeds both tables instead of two separate sync passes hitting Sleeper
+// twice. Returns the last week included.
 async function syncSeasonPoints(
   league: SleeperLeague,
   players: SleeperPlayersMap
@@ -283,8 +385,22 @@ async function syncSeasonPoints(
     const stats = await sleeperFetch<SleeperWeekStats>(
       `/stats/nfl/regular/${league.season}/${week}`
     );
+
+    // Sleeper includes one row per NFL team in the same payload, keyed
+    // "TEAM_<ABBR>" — that's the only place a team's own offensive snap
+    // count and pass attempts live, which snap share and target share are
+    // each a fraction of.
+    const teamLines = new Map<string, Record<string, number>>();
+    for (const [key, line] of Object.entries(stats)) {
+      if (key.startsWith("TEAM_")) teamLines.set(key.slice("TEAM_".length), line);
+    }
+
+    const weeklyRows: WeeklyPlayerStatRow[] = [];
+
     for (const [playerId, line] of Object.entries(stats)) {
-      const position = players[playerId]?.position;
+      if (playerId.startsWith("TEAM_")) continue;
+      const player = players[playerId];
+      const position = player?.position;
       if (!position || !(VALUE_POSITIONS as readonly string[]).includes(position)) continue;
 
       let points = 0;
@@ -293,8 +409,63 @@ async function syncSeasonPoints(
       }
       const total = totals.get(playerId) ?? { points: 0, gamesPlayed: 0 };
       total.points += points;
-      if ((line.gp ?? 0) > 0) total.gamesPlayed++;
+      const played = (line.gp ?? 0) > 0;
+      if (played) total.gamesPlayed++;
       totals.set(playerId, total);
+
+      if (!played) continue; // skip bye/inactive weeks in the weekly log
+      if (!player?.team) continue; // free agents etc. don't belong to an NFL team to browse by
+
+      const nflTeam = player.team;
+      const team = nflTeam ? teamLines.get(nflTeam) : undefined;
+      const offSnaps = line.off_snp ?? null;
+      // The per-team "TEAM_<ABBR>" row has no snap count of its own — each
+      // player's line already carries the team's offensive snap total as
+      // tm_off_snp, so snap share comes entirely from this one line.
+      const teamOffSnaps = line.tm_off_snp ?? null;
+      const targets = line.rec_tgt ?? null;
+      const teamPassAtt = team?.pass_att ?? null;
+
+      weeklyRows.push({
+        sleeperPlayerId: playerId,
+        playerName: rosterPlayerName(playerId, player),
+        playerPosition: position,
+        nflTeam,
+        season: league.season,
+        week,
+        snapPct: offSnaps !== null && teamOffSnaps ? round1((offSnaps / teamOffSnaps) * 100) : null,
+        offSnaps: offSnaps !== null ? Math.round(offSnaps) : null,
+        teamOffSnaps: teamOffSnaps !== null ? Math.round(teamOffSnaps) : null,
+        carries: line.rush_att !== undefined ? Math.round(line.rush_att) : null,
+        rushYards: line.rush_yd !== undefined ? Math.round(line.rush_yd) : null,
+        rushTd: line.rush_td !== undefined ? Math.round(line.rush_td) : null,
+        rushYardsAfterContact: line.rush_yac !== undefined ? Math.round(line.rush_yac) : null,
+        targets: targets !== null ? Math.round(targets) : null,
+        receptions: line.rec !== undefined ? Math.round(line.rec) : null,
+        recYards: line.rec_yd !== undefined ? Math.round(line.rec_yd) : null,
+        recTd: line.rec_td !== undefined ? Math.round(line.rec_td) : null,
+        recAirYards: line.rec_air_yd !== undefined ? Math.round(line.rec_air_yd) : null,
+        targetSharePct:
+          targets !== null && teamPassAtt ? round1((targets / teamPassAtt) * 100) : null,
+        teamPassAttempts: teamPassAtt !== null ? Math.round(teamPassAtt) : null,
+        passAttempts: line.pass_att !== undefined ? Math.round(line.pass_att) : null,
+        passCompletions: line.pass_cmp !== undefined ? Math.round(line.pass_cmp) : null,
+        passYards: line.pass_yd !== undefined ? Math.round(line.pass_yd) : null,
+        passTd: line.pass_td !== undefined ? Math.round(line.pass_td) : null,
+        interceptions: line.pass_int !== undefined ? Math.round(line.pass_int) : null,
+        fantasyPoints: Math.round(points * 100) / 100,
+      });
+    }
+
+    // One multi-row INSERT ... ON CONFLICT per week instead of one upsert
+    // call per row — Prisma's upsert() is one round trip per row, and at
+    // ~400 rows/week that was ~100ms × 400 (chunked $transaction calls hit
+    // the interactive transaction's 5s timeout the same way a
+    // single-row-at-a-time RosterPlayer sync once did, and sequential
+    // upserts just moved the same cost outside a transaction). Raw SQL gets
+    // a whole week down to one query.
+    if (weeklyRows.length > 0) {
+      await upsertWeeklyPlayerStats(weeklyRows);
     }
   }
 

@@ -102,6 +102,69 @@ model PlayerSeasonPoints {
   updatedAt       DateTime @updatedAt
 }
 
+// Per-player, per-week usage and box-score stats for every QB/RB/WR/TE in the
+// NFL (not just players on a roster in this league) — feeds the NFL Usage
+// Explorer on /data. Rebuilt one week at a time from Sleeper's weekly stats
+// endpoint, which keys everything by Sleeper's own player id, so the same id
+// ties a row back to PlayerSeasonPoints/RosterPlayer elsewhere in the app.
+//
+// Season totals aren't stored separately — the UI sums these rows for
+// weeks 1..statsThroughWeek, so there's one source of truth instead of two
+// numbers that can drift apart.
+//
+// Sleeper's payload has offensive snaps (off_snp / tm_off_snp) and target
+// share inputs (rec_tgt, rec_air_yd, team pass_att) but no route-running
+// data — routes-run participation isn't in here because no free feed
+// publishes it; see the note on the /data page.
+model WeeklyPlayerStat {
+  id              String   @id @default(cuid())
+  sleeperPlayerId String
+  playerName      String
+  playerPosition  String // QB | RB | WR | TE
+  nflTeam         String
+  season          String
+  week            Int
+
+  snapPct Float? // 100 * offSnaps / teamOffSnaps
+  offSnaps      Int?
+  teamOffSnaps  Int?
+
+  carries                Int?
+  rushYards              Int?
+  rushTd                 Int?
+  rushYardsAfterContact  Int?
+
+  targets           Int?
+  receptions        Int?
+  recYards          Int?
+  recTd             Int?
+  recAirYards       Int? // feeds aDOT (recAirYards / targets)
+  targetSharePct    Float? // 100 * targets / team pass attempts
+  teamPassAttempts  Int? // the denominator targetSharePct was computed from — stored so a season total can re-derive a weighted share instead of averaging weekly percentages
+
+  passAttempts    Int?
+  passCompletions Int?
+  passYards       Int?
+  passTd          Int?
+  interceptions   Int?
+
+  fantasyPoints Float? // scored with this league's own scoring_settings, like PlayerSeasonPoints
+
+  // NFL Next Gen Stats receiving leaderboard (nflverse's ngs_receiving feed),
+  // joined in separately by GSIS id after the Sleeper-based sync above
+  // creates the row — WR/TE only, NGS doesn't publish these for RB/QB.
+  avgCushion           Float? // yards of cushion the defender gave at the snap
+  avgSeparation        Float? // yards of separation at the moment of catch/incompletion
+  airYardsSharePct     Float? // % of the team's intended air yards this player drew
+  yacAboveExpectation  Float? // actual YAC minus NGS's expected YAC, +/-
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([sleeperPlayerId, season, week])
+  @@index([nflTeam, season, week])
+  @@index([playerPosition, season, week])
+}
+
 model FaabTransaction {
   id          String   @id @default(cuid())
   team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
