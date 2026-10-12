@@ -440,7 +440,7 @@ export default function UsageExplorer({
   return (
     <div className="space-y-6">
       <div>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
           {teams.map((t) => {
             const active = t.abbr === teamAbbr;
             return (
