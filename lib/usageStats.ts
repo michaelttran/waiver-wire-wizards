@@ -42,6 +42,8 @@ export type UsageStatLine = {
   avgSeparation: number | null;
   airYardsSharePct: number | null;
   yacAboveExpectation: number | null;
+  opponent: string | null; // null on the season line — a season spans many opponents
+  isHome: boolean | null;
 };
 
 export type UsagePlayer = {
@@ -106,6 +108,8 @@ type RawRow = {
   avgSeparation: number | null;
   airYardsSharePct: number | null;
   yacAboveExpectation: number | null;
+  opponent: string | null;
+  isHome: boolean | null;
 };
 
 function round1(n: number): number {
@@ -155,6 +159,8 @@ function weekLine(r: RawRow): UsageStatLine {
     avgSeparation: r.avgSeparation,
     airYardsSharePct: r.airYardsSharePct,
     yacAboveExpectation: r.yacAboveExpectation,
+    opponent: r.opponent,
+    isHome: r.isHome,
   };
 }
 
@@ -208,6 +214,8 @@ function seasonLine(rows: RawRow[]): UsageStatLine {
     avgSeparation: mean(rows.map((r) => r.avgSeparation)),
     airYardsSharePct: mean(rows.map((r) => r.airYardsSharePct)),
     yacAboveExpectation: mean(rows.map((r) => r.yacAboveExpectation)),
+    opponent: null, // a season spans many opponents — no single value here
+    isHome: null,
   };
 }
 

@@ -5,6 +5,7 @@ import { Prisma } from "@/app/generated/prisma/client";
 import { VALUE_POSITIONS } from "@/lib/fpor";
 import { snapshotMarketAdp } from "@/lib/marketAdp";
 import { syncNextGenReceiving } from "@/lib/nextgenStats";
+import { getScheduleMap, type OpponentInfo } from "@/lib/schedule";
 
 const SLEEPER_API = "https://api.sleeper.app/v1";
 
@@ -305,6 +306,8 @@ type WeeklyPlayerStatRow = {
   passTd: number | null;
   interceptions: number | null;
   fantasyPoints: number | null;
+  opponent: string | null;
+  isHome: boolean | null;
 };
 
 // Bulk upsert via one multi-row `INSERT ... ON CONFLICT DO UPDATE` instead of
@@ -319,7 +322,7 @@ async function upsertWeeklyPlayerStats(rows: WeeklyPlayerStatRow[]): Promise<voi
       ${r.carries}, ${r.rushYards}, ${r.rushTd}, ${r.rushYardsAfterContact}, ${r.targets}, ${r.receptions},
       ${r.recYards}, ${r.recTd}, ${r.recAirYards}, ${r.targetSharePct}, ${r.teamPassAttempts},
       ${r.passAttempts}, ${r.passCompletions}, ${r.passYards}, ${r.passTd}, ${r.interceptions},
-      ${r.fantasyPoints}, now()
+      ${r.fantasyPoints}, ${r.opponent}, ${r.isHome}, now()
     )`
   );
 
@@ -330,7 +333,7 @@ async function upsertWeeklyPlayerStats(rows: WeeklyPlayerStatRow[]): Promise<voi
       "carries", "rushYards", "rushTd", "rushYardsAfterContact", "targets", "receptions",
       "recYards", "recTd", "recAirYards", "targetSharePct", "teamPassAttempts",
       "passAttempts", "passCompletions", "passYards", "passTd", "interceptions",
-      "fantasyPoints", "updatedAt"
+      "fantasyPoints", "opponent", "isHome", "updatedAt"
     )
     VALUES ${Prisma.join(values)}
     ON CONFLICT ("sleeperPlayerId", "season", "week") DO UPDATE SET
@@ -357,6 +360,8 @@ async function upsertWeeklyPlayerStats(rows: WeeklyPlayerStatRow[]): Promise<voi
       "passTd" = EXCLUDED."passTd",
       "interceptions" = EXCLUDED."interceptions",
       "fantasyPoints" = EXCLUDED."fantasyPoints",
+      "opponent" = EXCLUDED."opponent",
+      "isHome" = EXCLUDED."isHome",
       "updatedAt" = EXCLUDED."updatedAt"
   `;
 }
@@ -378,6 +383,15 @@ async function syncSeasonPoints(
     else if (state.season_type === "post" || state.season_type === "off") lastWeek = 18;
   } else if (Number(state.season) > Number(league.season)) {
     lastWeek = 18;
+  }
+
+  // Best-effort — a player's opponent that week just stays unset if
+  // nflverse's schedule feed is unreachable, same tradeoff as the NGS step.
+  let schedule: Map<string, Map<number, OpponentInfo>> = new Map();
+  try {
+    schedule = await getScheduleMap(league.season);
+  } catch (err) {
+    console.error("Schedule fetch failed", err);
   }
 
   const totals = new Map<string, { points: number; gamesPlayed: number }>();
@@ -425,6 +439,7 @@ async function syncSeasonPoints(
       const teamOffSnaps = line.tm_off_snp ?? null;
       const targets = line.rec_tgt ?? null;
       const teamPassAtt = team?.pass_att ?? null;
+      const opponentInfo = schedule.get(nflTeam)?.get(week);
 
       weeklyRows.push({
         sleeperPlayerId: playerId,
@@ -433,6 +448,8 @@ async function syncSeasonPoints(
         nflTeam,
         season: league.season,
         week,
+        opponent: opponentInfo?.opponent ?? null,
+        isHome: opponentInfo?.isHome ?? null,
         snapPct: offSnaps !== null && teamOffSnaps ? round1((offSnaps / teamOffSnaps) * 100) : null,
         offSnaps: offSnaps !== null ? Math.round(offSnaps) : null,
         teamOffSnaps: teamOffSnaps !== null ? Math.round(teamOffSnaps) : null,

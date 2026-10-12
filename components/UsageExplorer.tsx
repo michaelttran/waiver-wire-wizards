@@ -85,6 +85,21 @@ const POS_SPECS: Record<UsagePlayer["position"], { label: string; cols: ColSpec[
 };
 const POSITION_ORDER: UsagePlayer["position"][] = ["QB", "RB", "WR", "TE"];
 
+// All-null line for a week a player has no WeeklyPlayerStat row for (their
+// team hasn't played yet, or they didn't play) — every numeric column reads
+// as "–" rather than quietly substituting something else.
+function emptyLine(week: number): UsageStatLine {
+  return {
+    week, snapPct: null, carries: null, rushYards: null, rushTd: null,
+    rushYardsAfterContact: null, yaco: null, ypc: null, targets: null,
+    receptions: null, recYards: null, recTd: null, ypt: null, targetSharePct: null,
+    aDOT: null, td: null, passAttempts: null, passCompletions: null, passYards: null,
+    passTd: null, interceptions: null, fantasyPoints: null, avgCushion: null,
+    avgSeparation: null, airYardsSharePct: null, yacAboveExpectation: null,
+    opponent: null, isHome: null,
+  };
+}
+
 function fmt(v: number | null, suffix = ""): string {
   if (v === null || v === undefined) return "–";
   const text = Number.isInteger(v) ? String(v) : v.toFixed(1);
@@ -265,7 +280,15 @@ function PositionTable({
                               <tbody>
                                 {p.weeks.map((wLine, idx) => (
                                   <tr key={wLine.week} className={idx % 2 === 0 ? "bg-white" : "bg-lavender"}>
-                                    <td className="px-2 py-1.5 font-600 text-ink/60 whitespace-nowrap">Wk {wLine.week}</td>
+                                    <td className="px-2 py-1.5 font-600 text-ink/60 whitespace-nowrap">
+                                      Wk {wLine.week}
+                                      {wLine.opponent && (
+                                        <span className="font-500 text-ink/35">
+                                          {" "}
+                                          {wLine.isHome ? "vs" : "@"} {wLine.opponent}
+                                        </span>
+                                      )}
+                                    </td>
                                     {spec.cols
                                       .filter((c) => c.key !== "trend")
                                       .map((c) => (
@@ -379,7 +402,26 @@ export default function UsageExplorer({
 
   function rangeLine(p: UsagePlayer): UsageStatLine {
     if (week === "season") return p.season;
-    return p.weeks.find((w) => w.week === week) ?? p.season;
+    // No fallback to season totals here — a team that hasn't played its
+    // current week yet (bye, or just hasn't kicked off) should show as
+    // genuinely empty for that week, not silently borrow season numbers
+    // under a "Week N" label.
+    return p.weeks.find((w) => w.week === week) ?? emptyLine(week);
+  }
+
+  // Opponent is a team-level fact (same for everyone on the roster that
+  // week), so it's pulled off whichever player happens to have a row for it
+  // rather than threaded through every column.
+  function opponentFor(wk: number): { opponent: string; isHome: boolean } | null {
+    for (const p of team?.players ?? []) {
+      const line = p.weeks.find((w) => w.week === wk);
+      if (line?.opponent) return { opponent: line.opponent, isHome: line.isHome ?? false };
+    }
+    return null;
+  }
+  function opponentLabel(wk: number): string {
+    const info = opponentFor(wk);
+    return info ? `${info.isHome ? "vs" : "@"} ${info.opponent}` : "";
   }
 
   function toggle(id: string) {
@@ -459,7 +501,9 @@ export default function UsageExplorer({
             {team?.name ?? "Select a team"}
           </span>
           <span className="font-sans font-500 text-[11px] text-cream/75">
-            {week === "season" ? `Season (thru Wk ${statsThroughWeek})` : `Week ${week}`}
+            {week === "season"
+              ? `Season (thru Wk ${statsThroughWeek})`
+              : `Week ${week}${opponentLabel(week) ? ` · ${opponentLabel(week)}` : ""}`}
           </span>
         </div>
         <div className="p-3.5 space-y-5">

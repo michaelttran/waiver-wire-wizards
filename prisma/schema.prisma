@@ -150,6 +150,11 @@ model WeeklyPlayerStat {
 
   fantasyPoints Float? // scored with this league's own scoring_settings, like PlayerSeasonPoints
 
+  // Who the player's team played that week — from nflverse's schedule feed
+  // (lib/schedule.ts), not Sleeper, which has no schedule endpoint.
+  opponent String?
+  isHome   Boolean?
+
   // NFL Next Gen Stats receiving leaderboard (nflverse's ngs_receiving feed),
   // joined in separately by GSIS id after the Sleeper-based sync above
   // creates the row — WR/TE only, NGS doesn't publish these for RB/QB.
