@@ -97,7 +97,8 @@ function emptyLine(week: number): UsageStatLine {
     aDOT: null, td: null, passAttempts: null, passCompletions: null, passYards: null,
     passTd: null, interceptions: null, fantasyPoints: null, avgCushion: null,
     avgSeparation: null, airYardsSharePct: null, yacAboveExpectation: null,
-    opponent: null, isHome: null,
+    opponent: null, isHome: null, teamScore: null, opponentScore: null,
+    teamQuarterScores: [], opponentQuarterScores: [],
   };
 }
 
@@ -316,6 +317,71 @@ function PositionTable({
   );
 }
 
+// Linescore-style box: this team's and the opponent's score by quarter for
+// the selected week, derived from play-by-play (see lib/schedule.ts) rather
+// than published directly anywhere — falls back to just the final score if
+// the quarter breakdown isn't available for this game yet.
+function Scorebox({
+  game,
+  teamAbbr,
+  teamColor,
+  opponentColor,
+}: {
+  game: UsageStatLine;
+  teamAbbr: string;
+  teamColor: string;
+  opponentColor: string;
+}) {
+  if (game.teamScore === null || !game.opponent) return null;
+
+  const periods = Math.max(game.teamQuarterScores.length, game.opponentQuarterScores.length);
+  const hasQuarters = periods > 0;
+  const periodLabel = (i: number) => (i < 4 ? `Q${i + 1}` : periods === 5 ? "OT" : `OT${i - 3}`);
+  const won = game.teamScore > game.opponentScore!;
+  const lost = game.teamScore < game.opponentScore!;
+
+  const row = (label: string, color: string, scores: number[], total: number, emphasize: boolean) => (
+    <tr>
+      <td className="px-2.5 py-1 text-left font-700 whitespace-nowrap">
+        <span className="inline-block w-2 h-2 rounded-sm mr-1.5 align-[1px]" style={{ background: color }} />
+        {label}
+      </td>
+      {hasQuarters &&
+        Array.from({ length: periods }, (_, i) => (
+          <td key={i} className="px-2.5 py-1 text-right text-ink/70">
+            {scores[i] ?? "–"}
+          </td>
+        ))}
+      <td className={`px-2.5 py-1 text-right font-700 ${emphasize ? "text-purple-dark" : "text-ink/70"}`}>
+        {total}
+      </td>
+    </tr>
+  );
+
+  return (
+    <div className="px-3.5 pt-3.5">
+      <table className="border-collapse text-[13px] [font-variant-numeric:tabular-nums]">
+        <thead>
+          <tr>
+            <th className="px-2.5 py-1" />
+            {hasQuarters &&
+              Array.from({ length: periods }, (_, i) => (
+                <th key={i} className="px-2.5 py-1 text-right text-[11px] font-600 text-ink/40">
+                  {periodLabel(i)}
+                </th>
+              ))}
+            <th className="px-2.5 py-1 text-right text-[11px] font-600 text-ink/40">Final</th>
+          </tr>
+        </thead>
+        <tbody>
+          {row(teamAbbr, teamColor, game.teamQuarterScores, game.teamScore, won)}
+          {row(game.opponent, opponentColor, game.opponentQuarterScores, game.opponentScore!, lost)}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function LeaguePulse({ pulse }: { pulse: PulseEntry[] }) {
   if (pulse.length === 0) {
     return (
@@ -410,19 +476,19 @@ export default function UsageExplorer({
     return p.weeks.find((w) => w.week === week) ?? emptyLine(week);
   }
 
-  // Opponent is a team-level fact (same for everyone on the roster that
-  // week), so it's pulled off whichever player happens to have a row for it
-  // rather than threaded through every column.
-  function opponentFor(wk: number): { opponent: string; isHome: boolean } | null {
+  // Opponent/score/quarters are all team-level facts (same for everyone on
+  // the roster that week), so they're pulled off whichever player happens to
+  // have a row for that week rather than threaded through every column.
+  function gameFor(wk: number): UsageStatLine | null {
     for (const p of team?.players ?? []) {
       const line = p.weeks.find((w) => w.week === wk);
-      if (line?.opponent) return { opponent: line.opponent, isHome: line.isHome ?? false };
+      if (line?.opponent) return line;
     }
     return null;
   }
   function opponentLabel(wk: number): string {
-    const info = opponentFor(wk);
-    return info ? `${info.isHome ? "vs" : "@"} ${info.opponent}` : "";
+    const game = gameFor(wk);
+    return game ? `${game.isHome ? "vs" : "@"} ${game.opponent}` : "";
   }
 
   function toggle(id: string) {
@@ -520,6 +586,14 @@ export default function UsageExplorer({
               : `Week ${week}${opponentLabel(week) ? ` · ${opponentLabel(week)}` : ""}`}
           </span>
         </div>
+        {week !== "season" &&
+          team &&
+          (() => {
+            const game = gameFor(week);
+            if (!game) return null;
+            const opponentColor = teams.find((t) => t.abbr === game.opponent)?.color ?? "#999";
+            return <Scorebox game={game} teamAbbr={team.abbr} teamColor={team.color} opponentColor={opponentColor} />;
+          })()}
         <div className="p-3.5 space-y-5">
           {team && team.players.length > 0 ? (
             POSITION_ORDER.map((pos) => (

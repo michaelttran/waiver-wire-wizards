@@ -5,7 +5,7 @@ import { Prisma } from "@/app/generated/prisma/client";
 import { VALUE_POSITIONS } from "@/lib/fpor";
 import { snapshotMarketAdp } from "@/lib/marketAdp";
 import { syncNextGenReceiving } from "@/lib/nextgenStats";
-import { getScheduleMap, type OpponentInfo } from "@/lib/schedule";
+import { getScheduleMap, type GameInfo } from "@/lib/schedule";
 
 const SLEEPER_API = "https://api.sleeper.app/v1";
 
@@ -308,6 +308,10 @@ type WeeklyPlayerStatRow = {
   fantasyPoints: number | null;
   opponent: string | null;
   isHome: boolean | null;
+  teamScore: number | null;
+  opponentScore: number | null;
+  teamQuarterScores: number[];
+  opponentQuarterScores: number[];
 };
 
 // Bulk upsert via one multi-row `INSERT ... ON CONFLICT DO UPDATE` instead of
@@ -322,7 +326,9 @@ async function upsertWeeklyPlayerStats(rows: WeeklyPlayerStatRow[]): Promise<voi
       ${r.carries}, ${r.rushYards}, ${r.rushTd}, ${r.rushYardsAfterContact}, ${r.targets}, ${r.receptions},
       ${r.recYards}, ${r.recTd}, ${r.recAirYards}, ${r.targetSharePct}, ${r.teamPassAttempts},
       ${r.passAttempts}, ${r.passCompletions}, ${r.passYards}, ${r.passTd}, ${r.interceptions},
-      ${r.fantasyPoints}, ${r.opponent}, ${r.isHome}, now()
+      ${r.fantasyPoints}, ${r.opponent}, ${r.isHome},
+      ${r.teamScore}, ${r.opponentScore}, ${r.teamQuarterScores}::int[], ${r.opponentQuarterScores}::int[],
+      now()
     )`
   );
 
@@ -333,7 +339,9 @@ async function upsertWeeklyPlayerStats(rows: WeeklyPlayerStatRow[]): Promise<voi
       "carries", "rushYards", "rushTd", "rushYardsAfterContact", "targets", "receptions",
       "recYards", "recTd", "recAirYards", "targetSharePct", "teamPassAttempts",
       "passAttempts", "passCompletions", "passYards", "passTd", "interceptions",
-      "fantasyPoints", "opponent", "isHome", "updatedAt"
+      "fantasyPoints", "opponent", "isHome",
+      "teamScore", "opponentScore", "teamQuarterScores", "opponentQuarterScores",
+      "updatedAt"
     )
     VALUES ${Prisma.join(values)}
     ON CONFLICT ("sleeperPlayerId", "season", "week") DO UPDATE SET
@@ -362,6 +370,10 @@ async function upsertWeeklyPlayerStats(rows: WeeklyPlayerStatRow[]): Promise<voi
       "fantasyPoints" = EXCLUDED."fantasyPoints",
       "opponent" = EXCLUDED."opponent",
       "isHome" = EXCLUDED."isHome",
+      "teamScore" = EXCLUDED."teamScore",
+      "opponentScore" = EXCLUDED."opponentScore",
+      "teamQuarterScores" = EXCLUDED."teamQuarterScores",
+      "opponentQuarterScores" = EXCLUDED."opponentQuarterScores",
       "updatedAt" = EXCLUDED."updatedAt"
   `;
 }
@@ -387,7 +399,7 @@ async function syncSeasonPoints(
 
   // Best-effort — a player's opponent that week just stays unset if
   // nflverse's schedule feed is unreachable, same tradeoff as the NGS step.
-  let schedule: Map<string, Map<number, OpponentInfo>> = new Map();
+  let schedule: Map<string, Map<number, GameInfo>> = new Map();
   try {
     schedule = await getScheduleMap(league.season);
   } catch (err) {
@@ -450,6 +462,10 @@ async function syncSeasonPoints(
         week,
         opponent: opponentInfo?.opponent ?? null,
         isHome: opponentInfo?.isHome ?? null,
+        teamScore: opponentInfo?.teamScore ?? null,
+        opponentScore: opponentInfo?.opponentScore ?? null,
+        teamQuarterScores: opponentInfo?.teamQuarterScores ?? [],
+        opponentQuarterScores: opponentInfo?.opponentQuarterScores ?? [],
         snapPct: offSnaps !== null && teamOffSnaps ? round1((offSnaps / teamOffSnaps) * 100) : null,
         offSnaps: offSnaps !== null ? Math.round(offSnaps) : null,
         teamOffSnaps: teamOffSnaps !== null ? Math.round(teamOffSnaps) : null,

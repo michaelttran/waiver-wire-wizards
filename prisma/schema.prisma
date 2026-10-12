@@ -150,10 +150,17 @@ model WeeklyPlayerStat {
 
   fantasyPoints Float? // scored with this league's own scoring_settings, like PlayerSeasonPoints
 
-  // Who the player's team played that week — from nflverse's schedule feed
-  // (lib/schedule.ts), not Sleeper, which has no schedule endpoint.
-  opponent String?
-  isHome   Boolean?
+  // Who the player's team played that week, the final score, and a
+  // quarter-by-quarter breakdown (the scorebox on the Usage Explorer) — all
+  // from nflverse (lib/schedule.ts), not Sleeper, which has no schedule or
+  // score endpoint. The quarter arrays are empty, not null, when
+  // play-by-play doesn't have the game yet; index 4+ is overtime.
+  opponent               String?
+  isHome                 Boolean?
+  teamScore              Int?
+  opponentScore          Int?
+  teamQuarterScores      Int[]
+  opponentQuarterScores  Int[]
 
   // NFL Next Gen Stats receiving leaderboard (nflverse's ngs_receiving feed),
   // joined in separately by GSIS id after the Sleeper-based sync above

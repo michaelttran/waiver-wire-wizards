@@ -44,6 +44,10 @@ export type UsageStatLine = {
   yacAboveExpectation: number | null;
   opponent: string | null; // null on the season line — a season spans many opponents
   isHome: boolean | null;
+  teamScore: number | null;
+  opponentScore: number | null;
+  teamQuarterScores: number[];
+  opponentQuarterScores: number[];
 };
 
 export type UsagePlayer = {
@@ -110,6 +114,10 @@ type RawRow = {
   yacAboveExpectation: number | null;
   opponent: string | null;
   isHome: boolean | null;
+  teamScore: number | null;
+  opponentScore: number | null;
+  teamQuarterScores: number[];
+  opponentQuarterScores: number[];
 };
 
 function round1(n: number): number {
@@ -161,6 +169,10 @@ function weekLine(r: RawRow): UsageStatLine {
     yacAboveExpectation: r.yacAboveExpectation,
     opponent: r.opponent,
     isHome: r.isHome,
+    teamScore: r.teamScore,
+    opponentScore: r.opponentScore,
+    teamQuarterScores: r.teamQuarterScores,
+    opponentQuarterScores: r.opponentQuarterScores,
   };
 }
 
@@ -216,6 +228,10 @@ function seasonLine(rows: RawRow[]): UsageStatLine {
     yacAboveExpectation: mean(rows.map((r) => r.yacAboveExpectation)),
     opponent: null, // a season spans many opponents — no single value here
     isHome: null,
+    teamScore: null,
+    opponentScore: null,
+    teamQuarterScores: [],
+    opponentQuarterScores: [],
   };
 }
 
