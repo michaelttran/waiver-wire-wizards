@@ -3,7 +3,14 @@
 import { Fragment, useMemo, useState } from "react";
 import { positionColor } from "@/lib/draftBoardStyle";
 import { nflTeamLogoUrl } from "@/lib/nflTeams";
-import type { PulseEntry, TeamSeasonBox, TeamUsage, UsagePlayer, UsageStatLine } from "@/lib/usageStats";
+import type {
+  LeagueBoxStats,
+  PulseEntry,
+  TeamSeasonBox,
+  TeamUsage,
+  UsagePlayer,
+  UsageStatLine,
+} from "@/lib/usageStats";
 
 const PURPLE_LIGHT = "#6d3aa8";
 const PURPLE_DARK = "#3a1c63";
@@ -359,7 +366,7 @@ function Scorebox({
   );
 
   return (
-    <div className="px-3.5 pt-3.5">
+    <div className="rounded-md border border-purple/10 overflow-hidden">
       <table className="border-collapse text-[13px] [font-variant-numeric:tabular-nums]">
         <thead>
           <tr>
@@ -408,7 +415,7 @@ function SeasonBox({ box, teamAbbr, teamColor }: { box: TeamSeasonBox; teamAbbr:
   );
 
   return (
-    <div className="px-3.5 pt-3.5">
+    <div className="rounded-md border border-purple/10 overflow-hidden">
       <table className="border-collapse text-[13px] [font-variant-numeric:tabular-nums]">
         <thead>
           <tr>
@@ -424,6 +431,52 @@ function SeasonBox({ box, teamAbbr, teamColor }: { box: TeamSeasonBox; teamAbbr:
         <tbody>
           {row(teamAbbr, teamColor, box.quartersFor, box.pointsFor, true)}
           {row("Opponents", "#999", box.quartersAgainst, box.pointsAgainst, false)}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// League-wide average/median, same column shape as whichever box it's
+// sitting next to (Scorebox for a single week, SeasonBox for the season) —
+// built from every team that has a value for that range, so a bye week
+// just means one fewer contributor that week rather than a skewed average.
+function LeagueBox({ stats, finalLabel }: { stats: LeagueBoxStats; finalLabel: string }) {
+  const periods = Math.max(stats.avgQuarters.length, stats.medianQuarters.length);
+  const periodLabel = (i: number) => (i < 4 ? `Q${i + 1}` : periods === 5 ? "OT" : `OT${i - 3}`);
+
+  const row = (label: string, quarters: number[], total: number) => (
+    <tr>
+      <td className="px-2.5 py-1 text-left font-700 whitespace-nowrap text-ink/70">{label}</td>
+      {Array.from({ length: periods }, (_, i) => (
+        <td key={i} className="px-2.5 py-1 text-right text-ink/70">
+          {quarters[i] ?? "–"}
+        </td>
+      ))}
+      <td className="px-2.5 py-1 text-right font-700 text-ink/70">{total}</td>
+    </tr>
+  );
+
+  return (
+    <div className="rounded-md border border-dashed border-gold/60 overflow-hidden">
+      <div className="px-2.5 pt-1.5 text-[10px] font-700 uppercase tracking-wide text-purple-dark bg-gold-light/20">
+        League &middot; {stats.teamCount} teams
+      </div>
+      <table className="border-collapse text-[13px] [font-variant-numeric:tabular-nums]">
+        <thead>
+          <tr>
+            <th className="px-2.5 py-1" />
+            {Array.from({ length: periods }, (_, i) => (
+              <th key={i} className="px-2.5 py-1 text-right text-[11px] font-600 text-ink/40">
+                {periodLabel(i)}
+              </th>
+            ))}
+            <th className="px-2.5 py-1 text-right text-[11px] font-600 text-ink/40">{finalLabel}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {row("Avg", stats.avgQuarters, stats.avgFinal)}
+          {row("Med", stats.medianQuarters, stats.medianFinal)}
         </tbody>
       </table>
     </div>
@@ -498,10 +551,14 @@ export default function UsageExplorer({
   teams,
   pulse,
   statsThroughWeek,
+  leagueWeekly,
+  leagueSeason,
 }: {
   teams: TeamUsage[];
   pulse: PulseEntry[];
   statsThroughWeek: number;
+  leagueWeekly: Record<number, LeagueBoxStats>;
+  leagueSeason: LeagueBoxStats | null;
 }) {
   const defaultTeam = teams.find((t) => t.hasData)?.abbr ?? teams[0]?.abbr ?? "";
   const [teamAbbr, setTeamAbbr] = useState(defaultTeam);
@@ -641,13 +698,22 @@ export default function UsageExplorer({
         </div>
         {team &&
           (week === "season"
-            ? team.seasonBox && <SeasonBox box={team.seasonBox} teamAbbr={team.abbr} teamColor={team.color} />
+            ? team.seasonBox && (
+                <div className="flex flex-wrap items-start gap-3 px-3.5 pt-3.5">
+                  <SeasonBox box={team.seasonBox} teamAbbr={team.abbr} teamColor={team.color} />
+                  {leagueSeason && <LeagueBox stats={leagueSeason} finalLabel="PF" />}
+                </div>
+              )
             : (() => {
                 const game = gameFor(week);
                 if (!game) return null;
                 const opponentColor = teams.find((t) => t.abbr === game.opponent)?.color ?? "#999";
+                const leagueStats = leagueWeekly[week];
                 return (
-                  <Scorebox game={game} teamAbbr={team.abbr} teamColor={team.color} opponentColor={opponentColor} />
+                  <div className="flex flex-wrap items-start gap-3 px-3.5 pt-3.5">
+                    <Scorebox game={game} teamAbbr={team.abbr} teamColor={team.color} opponentColor={opponentColor} />
+                    {leagueStats && <LeagueBox stats={leagueStats} finalLabel="Final" />}
+                  </div>
                 );
               })())}
         <div className="p-3.5 space-y-5">

@@ -92,11 +92,24 @@ export type PulseEntry = {
   deltaSnapPct: number;
 };
 
+// Average and median points by quarter across every team with a game that
+// week (weekly) or across every team's season totals (season) — rendered
+// next to a team's own scorebox for a quick "is this high or low" read.
+export type LeagueBoxStats = {
+  avgQuarters: number[];
+  avgFinal: number;
+  medianQuarters: number[];
+  medianFinal: number;
+  teamCount: number;
+};
+
 export type UsageExplorerData = {
   season: string | null;
   statsThroughWeek: number;
   teams: TeamUsage[];
   pulse: PulseEntry[];
+  leagueWeekly: Record<number, LeagueBoxStats>; // keyed by week
+  leagueSeason: LeagueBoxStats | null;
 };
 
 type RawRow = {
@@ -158,6 +171,36 @@ function addQuarterArrays(a: number[], b: number[]): number[] {
   const out = new Array(Math.max(a.length, b.length)).fill(0);
   for (let i = 0; i < out.length; i++) out[i] = (a[i] ?? 0) + (b[i] ?? 0);
   return out;
+}
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? round1((sorted[mid - 1] + sorted[mid]) / 2) : sorted[mid];
+}
+
+// Average/median across however many teams contributed a value at each
+// quarter index — a team that never went to overtime just doesn't count
+// toward the OT column, rather than dragging it toward 0.
+function computeLeagueBoxStats(entries: { score: number; quarters: number[] }[]): LeagueBoxStats | null {
+  if (entries.length === 0) return null;
+  const maxPeriods = Math.max(...entries.map((e) => e.quarters.length));
+  const avgQuarters: number[] = [];
+  const medianQuarters: number[] = [];
+  for (let i = 0; i < maxPeriods; i++) {
+    const atIndex = entries.map((e) => e.quarters[i]).filter((v): v is number => v !== undefined);
+    if (atIndex.length === 0) continue;
+    avgQuarters.push(round1(atIndex.reduce((a, b) => a + b, 0) / atIndex.length));
+    medianQuarters.push(median(atIndex));
+  }
+  const finals = entries.map((e) => e.score);
+  return {
+    avgQuarters,
+    avgFinal: round1(finals.reduce((a, b) => a + b, 0) / finals.length),
+    medianQuarters,
+    medianFinal: median(finals),
+    teamCount: entries.length,
+  };
 }
 
 // One row per (team, week) is enough — every player on a team shares the
@@ -302,7 +345,7 @@ export async function getUsageExplorerData(): Promise<UsageExplorerData> {
 
   const emptyTeams: TeamUsage[] = NFL_TEAMS.map((t) => ({ ...t, hasData: false, players: [], seasonBox: null }));
   if (!latest) {
-    return { season: null, statsThroughWeek: 0, teams: emptyTeams, pulse: [] };
+    return { season: null, statsThroughWeek: 0, teams: emptyTeams, pulse: [], leagueWeekly: {}, leagueSeason: null };
   }
 
   const season = latest.season;
@@ -370,5 +413,32 @@ export async function getUsageExplorerData(): Promise<UsageExplorerData> {
     pulse.sort((a, b) => b.deltaSnapPct - a.deltaSnapPct);
   }
 
-  return { season, statsThroughWeek, teams, pulse: pulse.slice(0, 8) };
+  // League-wide average/median scoring, for the comparison box next to each
+  // team's own scorebox. Weekly: one entry per team that played that week
+  // (deduped the same way computeSeasonBox dedupes within a team — here
+  // across every team's rows for the week). Season: each team's own
+  // seasonBox, already deduped.
+  const gameByWeekTeam = new Map<number, Map<string, RawRow>>();
+  for (const row of rows) {
+    if (row.teamScore === null) continue;
+    if (!gameByWeekTeam.has(row.week)) gameByWeekTeam.set(row.week, new Map());
+    const teamMap = gameByWeekTeam.get(row.week)!;
+    if (!teamMap.has(row.nflTeam)) teamMap.set(row.nflTeam, row);
+  }
+  const leagueWeekly: Record<number, LeagueBoxStats> = {};
+  for (const [wk, teamMap] of gameByWeekTeam) {
+    const stats = computeLeagueBoxStats(
+      [...teamMap.values()].map((r) => ({ score: r.teamScore!, quarters: r.teamQuarterScores }))
+    );
+    if (stats) leagueWeekly[wk] = stats;
+  }
+
+  const leagueSeason = computeLeagueBoxStats(
+    teams
+      .map((t) => t.seasonBox)
+      .filter((b): b is TeamSeasonBox => b !== null)
+      .map((b) => ({ score: b.pointsFor, quarters: b.quartersFor }))
+  );
+
+  return { season, statsThroughWeek, teams, pulse: pulse.slice(0, 8), leagueWeekly, leagueSeason };
 }

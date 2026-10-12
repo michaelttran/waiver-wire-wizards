@@ -63,7 +63,13 @@ export default async function DataPage() {
         </p>
       </div>
 
-      <UsageExplorer teams={usage.teams} pulse={usage.pulse} statsThroughWeek={usage.statsThroughWeek} />
+      <UsageExplorer
+        teams={usage.teams}
+        pulse={usage.pulse}
+        statsThroughWeek={usage.statsThroughWeek}
+        leagueWeekly={usage.leagueWeekly}
+        leagueSeason={usage.leagueSeason}
+      />
 
       <div className="wwz-card">
         <div className="wwz-section-header text-[13px]">Glossary</div>
