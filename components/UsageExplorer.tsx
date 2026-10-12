@@ -3,7 +3,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { positionColor } from "@/lib/draftBoardStyle";
 import { nflTeamLogoUrl } from "@/lib/nflTeams";
-import type { PulseEntry, TeamUsage, UsagePlayer, UsageStatLine } from "@/lib/usageStats";
+import type { PulseEntry, TeamSeasonBox, TeamUsage, UsagePlayer, UsageStatLine } from "@/lib/usageStats";
 
 const PURPLE_LIGHT = "#6d3aa8";
 const PURPLE_DARK = "#3a1c63";
@@ -382,6 +382,54 @@ function Scorebox({
   );
 }
 
+// Season analog of Scorebox: points by quarter summed across every game
+// played so far, plus the resulting record — the "opponent" row is an
+// aggregate of however many different teams were actually played, so it
+// gets a neutral swatch rather than any one team's color.
+function SeasonBox({ box, teamAbbr, teamColor }: { box: TeamSeasonBox; teamAbbr: string; teamColor: string }) {
+  const periods = Math.max(box.quartersFor.length, box.quartersAgainst.length);
+  const periodLabel = (i: number) => (i < 4 ? `Q${i + 1}` : periods === 5 ? "OT" : `OT${i - 3}`);
+
+  const row = (label: string, color: string, scores: number[], total: number, emphasize: boolean) => (
+    <tr>
+      <td className="px-2.5 py-1 text-left font-700 whitespace-nowrap">
+        <span className="inline-block w-2 h-2 rounded-sm mr-1.5 align-[1px]" style={{ background: color }} />
+        {label}
+      </td>
+      {Array.from({ length: periods }, (_, i) => (
+        <td key={i} className="px-2.5 py-1 text-right text-ink/70">
+          {scores[i] ?? "–"}
+        </td>
+      ))}
+      <td className={`px-2.5 py-1 text-right font-700 ${emphasize ? "text-purple-dark" : "text-ink/70"}`}>
+        {total}
+      </td>
+    </tr>
+  );
+
+  return (
+    <div className="px-3.5 pt-3.5">
+      <table className="border-collapse text-[13px] [font-variant-numeric:tabular-nums]">
+        <thead>
+          <tr>
+            <th className="px-2.5 py-1" />
+            {Array.from({ length: periods }, (_, i) => (
+              <th key={i} className="px-2.5 py-1 text-right text-[11px] font-600 text-ink/40">
+                {periodLabel(i)}
+              </th>
+            ))}
+            <th className="px-2.5 py-1 text-right text-[11px] font-600 text-ink/40">PF</th>
+          </tr>
+        </thead>
+        <tbody>
+          {row(teamAbbr, teamColor, box.quartersFor, box.pointsFor, true)}
+          {row("Opponents", "#999", box.quartersAgainst, box.pointsAgainst, false)}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function LeaguePulse({ pulse }: { pulse: PulseEntry[] }) {
   if (pulse.length === 0) {
     return (
@@ -491,6 +539,11 @@ export default function UsageExplorer({
     return game ? `${game.isHome ? "vs" : "@"} ${game.opponent}` : "";
   }
 
+  function recordLabel(box: TeamSeasonBox | null | undefined): string {
+    if (!box) return "";
+    return box.ties > 0 ? `${box.wins}-${box.losses}-${box.ties}` : `${box.wins}-${box.losses}`;
+  }
+
   function toggle(id: string) {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   }
@@ -582,18 +635,21 @@ export default function UsageExplorer({
           </span>
           <span className="font-sans font-500 text-[11px] text-cream/75">
             {week === "season"
-              ? `Season (thru Wk ${statsThroughWeek})`
+              ? `Season (thru Wk ${statsThroughWeek})${recordLabel(team?.seasonBox) ? ` · ${recordLabel(team?.seasonBox)}` : ""}`
               : `Week ${week}${opponentLabel(week) ? ` · ${opponentLabel(week)}` : ""}`}
           </span>
         </div>
-        {week !== "season" &&
-          team &&
-          (() => {
-            const game = gameFor(week);
-            if (!game) return null;
-            const opponentColor = teams.find((t) => t.abbr === game.opponent)?.color ?? "#999";
-            return <Scorebox game={game} teamAbbr={team.abbr} teamColor={team.color} opponentColor={opponentColor} />;
-          })()}
+        {team &&
+          (week === "season"
+            ? team.seasonBox && <SeasonBox box={team.seasonBox} teamAbbr={team.abbr} teamColor={team.color} />
+            : (() => {
+                const game = gameFor(week);
+                if (!game) return null;
+                const opponentColor = teams.find((t) => t.abbr === game.opponent)?.color ?? "#999";
+                return (
+                  <Scorebox game={game} teamAbbr={team.abbr} teamColor={team.color} opponentColor={opponentColor} />
+                );
+              })())}
         <div className="p-3.5 space-y-5">
           {team && team.players.length > 0 ? (
             POSITION_ORDER.map((pos) => (

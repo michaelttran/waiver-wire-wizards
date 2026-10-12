@@ -58,12 +58,29 @@ export type UsagePlayer = {
   season: UsageStatLine;
 };
 
+// Team-level season box score — wins/losses and points by quarter, summed
+// across every game the team's played. Computed once per team from the raw
+// rows directly (not from any one player's `season` line), since a player
+// who missed games would otherwise make the team look like it played fewer
+// games than it did.
+export type TeamSeasonBox = {
+  wins: number;
+  losses: number;
+  ties: number;
+  gamesPlayed: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  quartersFor: number[]; // summed across games; index 4+ is overtime
+  quartersAgainst: number[];
+};
+
 export type TeamUsage = {
   abbr: string;
   name: string;
   color: string;
   hasData: boolean;
   players: UsagePlayer[];
+  seasonBox: TeamSeasonBox | null;
 };
 
 export type PulseEntry = {
@@ -135,6 +152,46 @@ function sum(values: (number | null)[]): number | null {
 function mean(values: (number | null)[]): number | null {
   const present = values.filter((v): v is number => v !== null);
   return present.length ? round1(present.reduce((a, b) => a + b, 0) / present.length) : null;
+}
+
+function addQuarterArrays(a: number[], b: number[]): number[] {
+  const out = new Array(Math.max(a.length, b.length)).fill(0);
+  for (let i = 0; i < out.length; i++) out[i] = (a[i] ?? 0) + (b[i] ?? 0);
+  return out;
+}
+
+// One row per (team, week) is enough — every player on a team shares the
+// same game that week, so the raw rows passed in (which include every
+// player who recorded a stat that week) massively over-count games without
+// this dedupe.
+function computeSeasonBox(teamRows: RawRow[]): TeamSeasonBox | null {
+  const byWeek = new Map<number, RawRow>();
+  for (const r of teamRows) {
+    if (r.teamScore === null || r.opponentScore === null) continue;
+    if (!byWeek.has(r.week)) byWeek.set(r.week, r);
+  }
+  if (byWeek.size === 0) return null;
+
+  let wins = 0,
+    losses = 0,
+    ties = 0,
+    pointsFor = 0,
+    pointsAgainst = 0;
+  let quartersFor: number[] = [];
+  let quartersAgainst: number[] = [];
+  for (const r of byWeek.values()) {
+    const tf = r.teamScore!;
+    const ta = r.opponentScore!;
+    pointsFor += tf;
+    pointsAgainst += ta;
+    if (tf > ta) wins++;
+    else if (tf < ta) losses++;
+    else ties++;
+    quartersFor = addQuarterArrays(quartersFor, r.teamQuarterScores);
+    quartersAgainst = addQuarterArrays(quartersAgainst, r.opponentQuarterScores);
+  }
+
+  return { wins, losses, ties, gamesPlayed: byWeek.size, pointsFor, pointsAgainst, quartersFor, quartersAgainst };
 }
 
 function weekLine(r: RawRow): UsageStatLine {
@@ -243,7 +300,7 @@ export async function getUsageExplorerData(): Promise<UsageExplorerData> {
     select: { season: true, week: true },
   });
 
-  const emptyTeams: TeamUsage[] = NFL_TEAMS.map((t) => ({ ...t, hasData: false, players: [] }));
+  const emptyTeams: TeamUsage[] = NFL_TEAMS.map((t) => ({ ...t, hasData: false, players: [], seasonBox: null }));
   if (!latest) {
     return { season: null, statsThroughWeek: 0, teams: emptyTeams, pulse: [] };
   }
@@ -286,7 +343,7 @@ export async function getUsageExplorerData(): Promise<UsageExplorerData> {
       })
       .sort((a, b) => (b.season.fantasyPoints ?? 0) - (a.season.fantasyPoints ?? 0));
 
-    return { ...info, hasData: players.length > 0, players };
+    return { ...info, hasData: players.length > 0, players, seasonBox: computeSeasonBox(teamRows) };
   });
 
   // League Pulse: biggest week-over-week snap share jump, across every team,
