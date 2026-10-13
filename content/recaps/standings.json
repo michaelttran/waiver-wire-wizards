@@ -1,125 +1,125 @@
 {
-  "afterWeek": 4,
+  "afterWeek": 5,
   "rows": [
     {
       "sleeperUserId": "1395964563689586688",
       "name": "Gibby Goo",
-      "wins": 3,
+      "wins": 4,
       "losses": 1,
-      "points": 500.78,
-      "allPlayWins": 31,
+      "points": 631.36,
+      "allPlayWins": 39,
+      "allPlayLosses": 16,
+      "playoffOdds": 96.6
+    },
+    {
+      "sleeperUserId": "1399172448351477760",
+      "name": "Team anewbie",
+      "wins": 4,
+      "losses": 1,
+      "points": 533.48,
+      "allPlayWins": 25,
+      "allPlayLosses": 30,
+      "playoffOdds": 73.4
+    },
+    {
+      "sleeperUserId": "1395903900279635968",
+      "name": "La PortaPurdy",
+      "wins": 3,
+      "losses": 2,
+      "points": 642.04,
+      "allPlayWins": 42,
       "allPlayLosses": 13,
-      "playoffOdds": 93.3
+      "playoffOdds": 90.9
+    },
+    {
+      "sleeperUserId": "739908012164128768",
+      "name": "BIJAN MUSTARD",
+      "wins": 3,
+      "losses": 2,
+      "points": 615.86,
+      "allPlayWins": 39,
+      "allPlayLosses": 16,
+      "playoffOdds": 87.1
     },
     {
       "sleeperUserId": "1152074036600696832",
       "name": "WRong Strategy",
       "wins": 3,
-      "losses": 1,
-      "points": 499.5,
+      "losses": 2,
+      "points": 558.64,
       "allPlayWins": 34,
-      "allPlayLosses": 10,
-      "playoffOdds": 94.1
-    },
-    {
-      "sleeperUserId": "1399172448351477760",
-      "name": "Team anewbie",
-      "wins": 3,
-      "losses": 1,
-      "points": 410.58,
-      "allPlayWins": 19,
-      "allPlayLosses": 25,
-      "playoffOdds": 56.3
-    },
-    {
-      "sleeperUserId": "1395903900279635968",
-      "name": "La PortaPurdy",
-      "wins": 2,
-      "losses": 2,
-      "points": 510.58,
-      "allPlayWins": 33,
-      "allPlayLosses": 11,
-      "playoffOdds": 87.3
-    },
-    {
-      "sleeperUserId": "739908012164128768",
-      "name": "BIJAN MUSTARD",
-      "wins": 2,
-      "losses": 2,
-      "points": 478.56,
-      "allPlayWins": 29,
-      "allPlayLosses": 15,
-      "playoffOdds": 74.1
-    },
-    {
-      "sleeperUserId": "1393813485720190976",
-      "name": "I'm Sorry Ms. Jaxon",
-      "wins": 2,
-      "losses": 2,
-      "points": 460.42,
-      "allPlayWins": 23,
       "allPlayLosses": 21,
-      "playoffOdds": 65.4
+      "playoffOdds": 68.9
     },
     {
       "sleeperUserId": "1398484717900161024",
       "name": "Melatonin",
-      "wins": 2,
+      "wins": 3,
       "losses": 2,
-      "points": 443.24,
-      "allPlayWins": 22,
-      "allPlayLosses": 22,
-      "playoffOdds": 51.7
+      "points": 542.68,
+      "allPlayWins": 25,
+      "allPlayLosses": 30,
+      "playoffOdds": 56.8
+    },
+    {
+      "sleeperUserId": "1153020805836791808",
+      "name": "Jettas Gonna Jet",
+      "wins": 3,
+      "losses": 2,
+      "points": 527.94,
+      "allPlayWins": 28,
+      "allPlayLosses": 27,
+      "playoffOdds": 45.9
+    },
+    {
+      "sleeperUserId": "1393813485720190976",
+      "name": "I’m Sorry Ms. Jaxon",
+      "wins": 2,
+      "losses": 3,
+      "points": 545.14,
+      "allPlayWins": 24,
+      "allPlayLosses": 31,
+      "playoffOdds": 36.9
     },
     {
       "sleeperUserId": "998325463934107648",
       "name": "Marvins Room - Drake",
       "wins": 2,
-      "losses": 2,
-      "points": 390.82,
-      "allPlayWins": 11,
-      "allPlayLosses": 33,
-      "playoffOdds": 21.6
-    },
-    {
-      "sleeperUserId": "1153020805836791808",
-      "name": "Jettas Gonna Jet",
-      "wins": 2,
-      "losses": 2,
-      "points": 369.12,
-      "allPlayWins": 17,
-      "allPlayLosses": 27,
-      "playoffOdds": 14.2
+      "losses": 3,
+      "points": 501.66,
+      "allPlayWins": 16,
+      "allPlayLosses": 39,
+      "playoffOdds": 18.3
     },
     {
       "sleeperUserId": "1001617961007874048",
       "name": "The Strib Club",
       "wins": 1,
-      "losses": 3,
-      "points": 441.5,
-      "allPlayWins": 23,
-      "allPlayLosses": 21,
-      "playoffOdds": 32.4
+      "losses": 4,
+      "points": 532.02,
+      "allPlayWins": 25,
+      "allPlayLosses": 30,
+      "playoffOdds": 16.1
     },
     {
       "sleeperUserId": "1132197504956641280",
-      "name": "Thuy's Thot",
+      "name": "Katie’s Kitten",
       "wins": 1,
-      "losses": 3,
-      "points": 389.34,
-      "allPlayWins": 17,
-      "allPlayLosses": 27,
-      "playoffOdds": 8.2
+      "losses": 4,
+      "points": 517.22,
+      "allPlayWins": 24,
+      "allPlayLosses": 31,
+      "playoffOdds": 8.0
     },
     {
       "sleeperUserId": "1395902621021147136",
       "name": "Team annguy",
       "wins": 1,
-      "losses": 3,
-      "points": 322.24,
-      "allPlayWins": 5,
-      "allPlayLosses": 39,
-      "playoffOdds": 1.4
+      "losses": 4,
+      "points": 429.5,
+      "allPlayWins": 9,
+      "allPlayLosses": 46,
+      "playoffOdds": 1.1
     }
   ]
 }

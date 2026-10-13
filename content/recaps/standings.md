@@ -1,5 +1,5 @@
-- **Luckiest team: {{team:998325463934107648}}.** 2-2 with an 11-33 all-play record, second-worst in the league. They've finished above the league median once. The schedule is doing a lot of the work.
-- **Unluckiest team: {{team:1001617961007874048}}.** 1-3 with a winning all-play record (23-21). They've lost two games with the winning lineup on their own bench, so it's partly self-inflicted.
-- **Most likely to need a punishment: {{team:1395902621021147136}}.** The first win is in, but they're 5-39 all-play and the sim gives them about a 1% chance at the playoffs. Keep an eye on the commish too, at 1-3 with 8%.
+- **Luckiest team: {{team:1399172448351477760}}.** 4-1 with a losing all-play record (25-30). They've only been above the league median twice in five weeks, and they're still tied for the best record in the league.
+- **Unluckiest team: the commish.** 1-4, but they've beaten the league median three times. This week they put up 128 and ran into the 159-point week high. The sim gives them 8% to make the playoffs.
+- **Most likely to need a punishment: {{team:1395902621021147136}}.** 1-4, 9-46 all-play, and they haven't beaten the league median once all season. Drake Maye threw for 39 and it still wasn't enough.
 
-**Up next, Week 5: Ground & Pound.** Highest combined RB1 and RB2 wins. Commish, maybe start the running back who scored.
+**Up next, Week 6: Air Raid.** Highest combined WR1 and WR2 wins. {{team:1152074036600696832}}, maybe start the quarterback who scores points this time.
