@@ -1,5 +1,5 @@
-- **Luckiest team: {{team:1399172448351477760}}.** 4-1 with a losing all-play record (25-30). They've only been above the league median twice in five weeks, and they're still tied for the best record in the league.
-- **Unluckiest team: the commish.** 1-4, but they've beaten the league median three times. This week they put up 128 and ran into the 159-point week high. The sim gives them 8% to make the playoffs.
-- **Most likely to need a punishment: {{team:1395902621021147136}}.** 1-4, 9-46 all-play, and they haven't beaten the league median once all season. Drake Maye threw for 39 and it still wasn't enough.
+- **Luckiest team: {{team:1399172448351477760}}.** 4-2 with a 26-40 all-play record, one of the worst in the league. They've finished above the league median twice in six weeks and they're still in a playoff spot.
+- **Unluckiest team: {{team:739908012164128768}}.** 3-3 with a 44-22 all-play record, third-best in the league. They've scored more points than anyone except {{team:1395964563689586688}} and {{team:1395903900279635968}}, and they're sitting at .500.
+- **Most likely to need a punishment: {{team:1395902621021147136}}.** 1-5, 9-57 all-play, and they haven't finished above the league median once in six weeks. The sim gives them a 0.3% chance at the playoffs. The commish (1-5, 4%) is working hard to join them.
 
-**Up next, Week 6: Air Raid.** Highest combined WR1 and WR2 wins. {{team:1152074036600696832}}, maybe start the quarterback who scores points this time.
+**Up next, Week 7: Flex Appeal.** The highest-scoring FLEX wins. Commish, that means RJ Harvey, not whoever you picked up off waivers that week.
