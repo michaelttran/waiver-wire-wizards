@@ -1,5 +1,5 @@
-- **Luckiest team: {{team:1399172448351477760}}.** 5-3 with a 35-53 all-play record, third-worst in the league. They've finished above the league median three times in eight weeks, and Burrow keeps rescuing them.
-- **Unluckiest team: {{team:739908012164128768}}.** They've scored more points than anyone in the league (970) and have the best all-play record (66-22), and they're 5-3 behind two 6-2 teams.
-- **Most likely to need a punishment: it's a tie.** {{team:1395902621021147136}} and the commish are both 1-7, and the sim gives each of them a 0% chance at the playoffs. The commish renamed their team again, to {{team:1132197504956641280}}, which hasn't helped.
+- **Luckiest team: {{team:1398484717900161024}}.** 6-3 with a 42-57 all-play record, which is tied for eighth in the league. They've finished above the league median only four times in nine weeks and are somehow tied for second.
+- **Unluckiest team: {{team:1395964563689586688}}.** Their 62-37 all-play record is fourth-best and their 1,043 points are fourth-most, and they're 5-4 after scoring 125 in a loss this week.
+- **Most likely to need a punishment: {{team:1395902621021147136}}, by a nose.** They and the commish are both 1-8 with 0% playoff odds, but {{team:1395902621021147136}} has the fewest points (797) and the worst all-play record (23-76). The commish is still very much in this race.
 
-**Up next, Week 9: Kicker's Revenge.** The highest-scoring kicker wins. {{team:1398484717900161024}} just picked up a 15-point kicker, so the rest of you are behind.
+**Up next, Week 10: Upset of the Week.** The lowest-projected team that wins takes it. For once, a bad projection is a good thing, so {{team:1395902621021147136}} and the commish finally have a shot.
