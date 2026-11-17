@@ -1,5 +1,5 @@
-- **Luckiest team: {{team:1398484717900161024}}.** 6-3 with a 42-57 all-play record, which is tied for eighth in the league. They've finished above the league median only four times in nine weeks and are somehow tied for second.
-- **Unluckiest team: {{team:1395964563689586688}}.** Their 62-37 all-play record is fourth-best and their 1,043 points are fourth-most, and they're 5-4 after scoring 125 in a loss this week.
-- **Most likely to need a punishment: {{team:1395902621021147136}}, by a nose.** They and the commish are both 1-8 with 0% playoff odds, but {{team:1395902621021147136}} has the fewest points (797) and the worst all-play record (23-76). The commish is still very much in this race.
+- **Luckiest team: {{team:1398484717900161024}}.** 7-3 and in second place with a 51-59 all-play record. They've been above the league median in exactly half their games, and they keep benching Dak.
+- **Unluckiest team: {{team:739908012164128768}}.** They've scored the most points in the league (1,197) and have the best all-play record (78-32), and they're 6-4, two games behind {{team:1152074036600696832}}.
+- **Most likely to need a punishment: {{team:1395902621021147136}}.** They and the commish are both 1-9 with 0% playoff odds, but {{team:1395902621021147136}} has 147 fewer points, a 23-87 all-play record, and now the season's lowest score. The commish at least set a perfect lineup this week.
 
-**Up next, Week 10: Upset of the Week.** The lowest-projected team that wins takes it. For once, a bad projection is a good thing, so {{team:1395902621021147136}} and the commish finally have a shot.
+**Up next, Week 11: Bench Boss.** The most bench points wins (injured and bye-week players don't count). {{team:1395902621021147136}} has been training for this one all year.
